@@ -9,7 +9,7 @@ export function makeBlock(type, x = 60, y = 210, extra = {}) {
     note: [290, 190],
     text: [350, 100],
     table: [490, 220],
-    rect: [240, 150],
+    rect: [200, 200],
     circle: [160, 160],
     hline: [450, 16],
     vline: [16, 280],
@@ -20,7 +20,7 @@ export function makeBlock(type, x = 60, y = 210, extra = {}) {
     pagelink: [300, 80],
     calendar: [440, 420],
   };
-  const [w, h] = sizes[type] || (isShape(type)?[240,180]:[290, 190]);
+  const [w, h] = sizes[type] || (isShape(type)?[200,200]:[290, 190]);
   return {
     id: uid(),
     type,
@@ -34,6 +34,7 @@ export function makeBlock(type, x = 60, y = 210, extra = {}) {
         : type === "text"
           ? "내용을 입력하세요."
           : "",
+    ...(isShape(type)?{keepAspect:true}:{}),
     rotation: 0,
     color: type === "note" ? "#fff4ce" : "#e9edff",
     ...extra,

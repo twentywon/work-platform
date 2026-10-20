@@ -1,3 +1,4 @@
+import {blockLink,setBlockLink,removeBlockLink,checkedLink} from './links.js';
 import {checksFor,setChecks,migrateCheckBlocks,replaceLines,reconcileLines,lineMarkup,editorText,editorSelection,setEditorSelection} from "./line-editor.js";
 import {tableCells} from "./table.js";
 import {clipboardType,makeClipboard,readClipboard,pasteBlocks} from "./clipboard.js";
@@ -32,7 +33,7 @@ let state,
   hoverTimer,
   previewToken = 0;
 let selectedIds=new Set();
-let objectMenuPosition=null;
+let objectMenuPosition=null,editingLinkedId=null,objectClipboard=null;
 const undoStack=[];
 const editHistory=new EditHistory();
 let cancelGesture=null,suppressBoardClick=false;
@@ -180,7 +181,7 @@ function render() {
 <button class="new-page" data-action="add-page">${icon("plus")}새 페이지 만들기</button>
 <div class="side-bottom"><div class="tip-card"><span class="tip-icon">${icon("sparkles")}</span><strong>생각을 펼쳐보세요</strong><p>메모부터 파일까지,<br>모든 업무를 나만의 공간에.</p><button data-action="help">코션 사용 가이드 ${icon("arrow-up-right")}</button></div><div class="local-label">${icon("hard-drive")}이 브라우저에 안전하게 보관</div><button class="profile" data-action="help"><span class="profile-avatar">나</span><span>나의 공간<small>개인 워크스페이스</small></span>${icon("circle-help")}</button></div></aside>
 <main><header class="topbar"><div class="breadcrumb">워크스페이스 ${icon("chevron-right")}<input id="page-title" aria-label="페이지 이름" value="${escape(p.title)}" maxlength="70"/></div><div class="top-actions"><button id="connection-status" data-action="connection" class="connection-status">${window.moaDesktop?.nativeDropPaths ? "PC 원본 연결" : window.moaDesktop ? "브라우저 연결" : "미리보기 모드"}</button><button data-action="backup-menu" class="connection-status">백업·복원</button><span id="save-status">${icon("circle-check")}모든 변경사항 저장됨</span><button class="icon-btn" data-action="help" title="사용 가이드">${icon("circle-help")}</button></div></header>
-<section class="toolbar" aria-label="삽입 도구모음"><div class="toolbar-group"><button data-add="text">${icon("type")}<span>텍스트</span></button><button data-add="drawer">${icon("archive")}<span>서랍</span></button><button data-add="note">${icon("sticky-note")}<span>메모</span></button><button data-action="media">${icon("image")}<span>미디어</span></button><button data-add="calendar">${icon("calendar-days")}<span>달력</span></button><button data-action="web">${icon("globe")}<span>인터넷 링크</span></button><button data-action="pagelink">${icon("notebook-tabs")}<span>페이지 링크</span></button><button data-add="table">${icon("table-2")}<span>표</span></button><div class="dropdown"><button data-menu="shapes">${icon("shapes")}<span>도형</span>${icon("chevron-down")}</button><div class="menu" id="shapes-menu">${Object.entries(shapes).map(([key,shape])=>`<button data-add="${key}">${icon(shape.icon)}${shape.name}</button>`).join('')}</div></div><div class="dropdown"><button data-menu="lines">${icon("columns-2")}<span>구분선</span>${icon("chevron-down")}</button><div class="menu" id="lines-menu"><button data-add="hline">${icon("minus")}가로 구분선</button><button data-add="vline">${icon("move-vertical")}세로 구분선</button></div></div></div><span class="toolbar-divider"></span><button class="link-tool" data-action="register">${icon("link")}<span>파일 연결</span></button><button class="link-tool" data-action="path-shortcut">${icon("clipboard-paste")}<span>경로 붙여넣기</span></button><div class="toolbar-right"><span>가로폭 맞춤 · 격자 20px</span>${icon("lock-keyhole")}<button class="dimensions" data-action="dimensions">${p.width} × ${p.height}</button></div></section>
+<section class="toolbar" aria-label="삽입 도구모음"><div class="toolbar-group"><button data-add="text">${icon("type")}<span>텍스트</span></button><button data-add="drawer">${icon("archive")}<span>서랍</span></button><button data-add="note">${icon("sticky-note")}<span>메모</span></button><button data-action="media">${icon("image")}<span>미디어</span></button><button data-add="calendar">${icon("calendar-days")}<span>달력</span></button><button data-action="link">${icon("link")}<span>링크</span></button><button data-add="table">${icon("table-2")}<span>표</span></button><div class="dropdown"><button data-menu="shapes">${icon("shapes")}<span>도형</span>${icon("chevron-down")}</button><div class="menu" id="shapes-menu">${Object.entries(shapes).map(([key,shape])=>`<button data-add="${key}">${icon(shape.icon)}${shape.name}</button>`).join('')}</div></div><div class="dropdown"><button data-menu="lines">${icon("columns-2")}<span>구분선</span>${icon("chevron-down")}</button><div class="menu" id="lines-menu"><button data-add="hline">${icon("minus")}가로 구분선</button><button data-add="vline">${icon("move-vertical")}세로 구분선</button></div></div></div><span class="toolbar-divider"></span><button class="link-tool" data-action="register">${icon("link")}<span>파일 연결</span></button><div class="toolbar-right"><span>가로폭 맞춤 · 격자 20px</span>${icon("lock-keyhole")}<button class="dimensions" data-action="dimensions">${p.width} × ${p.height}</button></div></section>
 <div id="selection-tools" class="context-toolbar"></div>
 <div class="canvas-viewport" id="viewport"><div class="canvas-space" id="canvas-space"><div class="canvas" id="canvas" tabindex="0" aria-label="업무 보드" style="width:${p.width}px;height:${p.height}px">${p.blocks.filter(b=>!b.parentId).map(b=>blockHTML(b)).join("")}<div class="canvas-footer"><span>MADE FOR YOUR IDEAS</span><span>COTION WORKSPACE · ${String(state.pages.indexOf(p) + 1).padStart(2, "0")}</span></div></div></div></div>
 <footer class="bottom-bar"><span class="page-count">${state.pages.indexOf(p) + 1} / ${state.pages.length} 페이지</span><div class="pagination"><button data-action="prev-page" title="이전 페이지" ${state.pages.indexOf(p) === 0 ? "disabled" : ""}>${icon("chevron-left")}</button>${state.pages.map((x, i) => `<button data-page="${x.id}" class="${x.id === active ? "chosen" : ""}" aria-label="${i + 1}페이지">${i + 1}</button>`).join("")}<button data-action="next-page" title="다음 페이지" ${state.pages.indexOf(p) === state.pages.length - 1 ? "disabled" : ""}>${icon("chevron-right")}</button><span></span><button data-action="add-page" title="새 페이지">${icon("plus")}</button></div><div class="zoom-tools"><button data-action="zoom-out" title="축소">${icon("minus")}</button><button id="zoom-value" data-action="fit" title="화면에 맞추기">100%</button><button data-action="actual-size" title="원본 크기 (100%)">1:1</button><button data-action="zoom-in" title="확대">${icon("plus")}</button><span></span><button data-action="fullscreen" title="전체 화면">${icon("maximize")}</button></div></footer></main>
@@ -196,7 +197,7 @@ function render() {
 function blockHTML(b, nested = false) {
   let content = "";
   const editable = (text, cls = "") =>
-    `<div class="editable ${cls}" contenteditable="true" spellcheck="false" data-edit="text" style="${escape(textStyle(b.format||{}))}">${lineMarkup(text,checksFor(b),escape)}</div>`;
+    `<div class="editable ${cls}" contenteditable="${b.hyperlink&&editingLinkedId!==b.id?'false':'true'}" spellcheck="false" data-edit="text" style="${escape(textStyle(b.format||{}))}">${lineMarkup(text,checksFor(b),escape)}</div>`;
   if (b.type === "drawer") {
     const children=drawerChildren(page(),b.id);
     content=`<div class="drawer-header"><button data-drawer-toggle aria-expanded="${!!b.expanded}" aria-label="서랍 펼치기 또는 접기">${icon(b.expanded?"chevron-down":"chevron-right")}${icon("archive")}</button><input class="drawer-name" style="${escape(textStyle(b.format||{}))}" data-drawer-name aria-label="서랍 이름" value="${escape(b.name||"새 서랍")}"/><span>${children.length}개</span></div>${b.expanded ? `<div class="drawer-list">${children.map(child=>`<div class="drawer-entry"><div class="drawer-entry-tools"><span>${blockNames[child.type]}</span><button data-drawer-up="${child.id}" title="목록 위로">↑</button><button data-drawer-down="${child.id}" title="목록 아래로">↓</button><button data-drawer-out="${child.id}" title="보드로 꺼내기">${icon("arrow-up-right")}</button></div>${blockHTML(child,true)}</div>`).join("")||'<p class="drawer-empty">이 서랍에 개체를 넣어 보세요.</p>'}</div><div class="drawer-add"><button data-drawer-existing>개체 넣기</button><button data-drawer-file>파일</button><button data-drawer-media>이미지·GIF·영상</button><button data-drawer-note>메모</button></div>` : ""}`;
@@ -205,7 +206,7 @@ function blockHTML(b, nested = false) {
     content = `<div class="note-label">${icon("sticky-note")}<span>${escape(b.label || "QUICK NOTE")}</span></div>${editable(b.text, "note-text")}<span class="note-corner"></span>`;
   if (b.type === "text") content = editable(b.text, b.role || "");
   if (isShape(b.type))
-    content = shapeMarkup(b.type)+editable(b.text || "내용을 입력하세요.", "shape-text");
+    content = shapeMarkup(b.type,!!b.keepAspect)+editable(b.text || "내용을 입력하세요.", "shape-text");
   if (b.type === "table") {
     const rows = b.cells || [
       ["할 일", "상태", "비고"],
@@ -213,7 +214,7 @@ function blockHTML(b, nested = false) {
       ["아이디어 모으기", "예정", ""],
       ["함께 검토하기", "예정", ""],
     ];
-    content = `<div class="table-scroll"><table>${rows.map((row, r) => `<tr>${row.map((cell, c) => `<${r === 0 && b.tableHeader!==false ? "th" : "td"} contenteditable="true" data-cell="${r},${c}" style="${escape(textStyle(b.format||{}))}">${lineMarkup(cell,checksFor(b,`${r},${c}`),escape)}</${r === 0 && b.tableHeader!==false ? "th" : "td"}>`).join("")}</tr>`).join("")}</table></div>`;
+    content = `<div class="table-scroll"><table>${rows.map((row, r) => `<tr>${row.map((cell, c) => `<${r === 0 && b.tableHeader!==false ? "th" : "td"} contenteditable="${b.hyperlink&&editingLinkedId!==b.id?'false':'true'}" data-cell="${r},${c}" style="${escape(textStyle(b.format||{}))}">${lineMarkup(cell,checksFor(b,`${r},${c}`),escape)}</${r === 0 && b.tableHeader!==false ? "th" : "td"}>`).join("")}</tr>`).join("")}</table></div>`;
   }
   if (b.type === "media")
     content = `<div class="media-content" data-media="${b.fileId}"><span>미디어를 불러오는 중…</span></div><div class="media-caption">${escape(b.name)}</div>`;
@@ -230,13 +231,15 @@ function blockHTML(b, nested = false) {
     const month = b.month || monthKey();
     const today = new Date();
     const todayKey = `${monthKey(today)}-${String(today.getDate()).padStart(2,"0")}`;
-    content = `<div class="calendar-head"><button data-calendar-step="-1" aria-label="이전 달">${icon("chevron-left")}</button><input type="month" data-calendar-month aria-label="달력 월" min="1900-01" max="2200-12" value="${escape(month)}"/><button data-calendar-step="1" aria-label="다음 달">${icon("chevron-right")}</button><button data-calendar-today>오늘</button></div><div class="calendar-week">${["일","월","화","수","목","금","토"].map(d=>`<span>${d}</span>`).join("")}</div><div class="calendar-grid">${monthDays(month).map(date=>date ? `<button class="calendar-day ${date === todayKey ? "today" : ""} ${b.events?.[date] ? "has-event" : ""}" data-calendar-date="${date}" aria-label="${date} 일정"><span>${Number(date.slice(-2))}</span><small>${escape(b.events?.[date] || "")}</small></button>` : '<span></span>').join("")}</div>`;
+    content = `<div class="calendar-surface" style="--calendar-weeks:${monthDays(month).length/7}"><div class="calendar-head"><button data-calendar-step="-1" aria-label="이전 달">${icon("chevron-left")}</button><input type="month" data-calendar-month aria-label="달력 월" min="1900-01" max="2200-12" value="${escape(month)}"/><button data-calendar-step="1" aria-label="다음 달">${icon("chevron-right")}</button><button data-calendar-today>오늘</button></div><div class="calendar-week">${["일","월","화","수","목","금","토"].map(d=>`<span>${d}</span>`).join("")}</div><div class="calendar-grid">${monthDays(month).map(date=>date ? `<button class="calendar-day ${date === todayKey ? "today" : ""} ${b.events?.[date] ? "has-event" : ""}" data-calendar-date="${date}" aria-label="${date} 일정"><span>${Number(date.slice(-2))}</span><small>${escape(b.events?.[date] || "")}</small></button>` : '<span></span>').join("")}</div></div>`;
   }
   if (b.type === "file") {
     const [ico, bg, color] = fileStyle(b.name);
     content = `<button class="file-open" data-file="${b.fileId}" title="${escape(b.sourcePath || b.name)}"><span class="file-type" style="background:${bg};color:${color}">${icon(ico)}</span><span class="file-details"><strong style="${escape(textStyle(b.format||{}))}">${escape(b.caption||b.name)}</strong><small id="mode-${b.id}">${window.moaDesktop ? "바로가기 · 원본 파일 열기" : "마우스를 올려 미리보기"}</small></span>${icon("arrow-up-right")}</button>${window.moaDesktop ? `<button class="file-preview-action" data-preview-file="${b.fileId}" title="미리보기">${icon("eye")}</button>` : ""}`;
   }
-  return `<article class="block block-${b.type} ${b.role || ""} ${nested?'in-drawer':''} ${b.locked?'position-locked':''} ${isShape(b.type)?'block-shape':''}" data-id="${b.id}" style="left:${nested?0:b.x}px;top:${nested?0:b.y}px;width:${nested?'100%':b.w+'px'};height:${b.h}px;transform:rotate(${nested?0:Number(b.rotation)||0}deg);--block-color:${b.color};${appearanceStyle(b)}"><button class="drag-handle" title="드래그하여 이동" aria-label="블록 이동">${icon("grip")}</button>${content}${["top","right","bottom","left"].map(edge=>`<button class="select-edge edge-${edge}" aria-label="개체 테두리 선택 ${edge}" title="테두리를 눌러 선택"></button>`).join("")}<button class="rotate-handle" title="드래그하여 회전 (15도 간격)" aria-label="블록 회전">${icon("rotate-cw")}</button><button class="resize-handle" title="크기 조절" aria-label="블록 크기 조절"></button></article>`;
+  const linked=blockLink(b);
+  const linkBadge=b.hyperlink?`<button class="object-link-badge" data-object-link aria-label="적용된 링크 열기" title="${escape(linked?.kind==='web'?linked.url:state.pages.find(p=>p.id===linked?.pageId)?.title||'삭제된 페이지')}">${icon('link')}</button>`:'';
+  return `<article class="block ${b.hyperlink?'has-object-link':''} block-${b.type} ${b.role || ""} ${nested?'in-drawer':''} ${b.locked?'position-locked':''} ${isShape(b.type)?'block-shape':''}" data-id="${b.id}" style="left:${nested?0:b.x}px;top:${nested?0:b.y}px;width:${nested?'100%':b.w+'px'};height:${b.h}px;transform:rotate(${nested?0:Number(b.rotation)||0}deg);--block-color:${b.color};${appearanceStyle(b)}"><button class="drag-handle" title="드래그하여 이동" aria-label="블록 이동">${icon("grip")}</button>${content}${linkBadge}${["top","right","bottom","left"].map(edge=>`<button class="select-edge edge-${edge}" aria-label="개체 테두리 선택 ${edge}" title="테두리를 눌러 선택"></button>`).join("")}<button class="rotate-handle" title="드래그하여 회전 (15도 간격)" aria-label="블록 회전">${icon("rotate-cw")}</button><button class="resize-handle" title="크기 조절 (Shift: 비율 유지)" aria-label="블록 크기 조절"></button></article>`;
 }
 function bind() {
   document
@@ -293,6 +296,14 @@ function bind() {
   $("#canvas").addEventListener("pointerdown", onCanvasPointer);
   $('#canvas').addEventListener('contextmenu',e=>{const block=e.target.closest('.block');if(block){e.preventDefault();openObjectMenu(block.dataset.id,e.clientX,e.clientY);}});
   $('#canvas').addEventListener('beforeinput',editBeforeInput);
+  $('#canvas').addEventListener('wheel',drawerWheel,{passive:false});
+  $('#canvas').addEventListener('click',e=>{
+   const el=e.target.closest('.block'),b=page().blocks.find(b=>b.id===el?.dataset.id);
+   if(!b?.hyperlink||e.target.closest('.select-edge,.drag-handle,.resize-handle,.rotate-handle,.drawer-entry-tools'))return;
+   if(suppressBoardClick)return;
+   if(editingLinkedId===b.id&&!e.target.closest('[data-object-link]'))return;
+   e.preventDefault();e.stopImmediatePropagation();followBlockLink(b);
+  },true);
   $('#canvas').addEventListener('focusin',e=>{const block=e.target.closest('.block');if(block&&!selectedIds.has(block.dataset.id))selectBlock(block.dataset.id);});
   $('#canvas').addEventListener('compositionend',e=>{if(e.target.matches('[data-edit],[data-cell]'))queueMicrotask(()=>syncTextEditor(e.target));});
   $("#canvas").addEventListener('click',e=>{if(suppressBoardClick){e.preventDefault();e.stopImmediatePropagation();suppressBoardClick=false;}},true);
@@ -444,6 +455,7 @@ function scaleCanvas() {
   $("#zoom-value").textContent = `${Math.round(zoom * 100)}%`;
 }
 function switchPage(id) {
+  editingLinkedId=null;
   selected = null;
   active = id;
   state.active = id;
@@ -525,10 +537,14 @@ function contextToolbar() {
  ${single&&b.type==='calendar'?`<label>달력 월<input data-prop="month" aria-label="설정 달력 월" type="month" min="1900-01" max="2200-12" value="${escape(b.month||monthKey())}"/></label>`:''}
  ${single&&b.type==='drawer'?`<label>서랍 이름<input data-prop="name" aria-label="설정 서랍 이름" value="${escape(b.name||'새 서랍')}"/></label>${button('drawer-toggle',b.expanded?'서랍 접기':'서랍 펼치기',b.expanded?'접기':'펼치기')}${button('drawer-existing','기존 개체 넣기','개체 넣기')}`:''}
  ${color('fill','배경색',hexColor(b.background)?b.background:b.color)}${button('clear-fill','배경색 없애기','배경 없음')}${color('borderColor','테두리색',b.borderColor||'#b8c3d5')}${number('borderWidth','테두리 두께',b.borderWidth??1,0,12)}${number('opacity','불투명도',Math.round((b.opacity??1)*100),10,100)}
- <button data-show-object-menu aria-label="개체 메뉴" title="위치·크기·회전 등 개체 메뉴">${icon('menu')}개체 메뉴</button></div>`;
- menuRoot.innerHTML=`<div id="object-context-menu" class="object-context-menu" role="menu" aria-label="개체 컨텍스트 메뉴" hidden><strong>개체 위치와 배치</strong>
- ${single&&!b.parentId?`${choice('objectAlign','개체 정렬',[['','선택…'],['left','왼쪽'],['center-x','가운데'],['right','오른쪽'],['top','위쪽'],['center-y','세로 가운데'],['bottom','아래쪽']],'')}${number('x','X',Math.round(b.x),0,page().width)}${number('y','Y',Math.round(b.y),0,page().height)}${number('w','너비',Math.round(b.w),20,page().width)}${number('h','높이',Math.round(b.h),8,page().height)}<label>회전<input id="rotation-angle" data-prop="rotation" aria-label="회전 각도" type="number" min="-360" max="360" step="15" value="${Number.isFinite(Number(b.rotation))?Number(b.rotation):0}" ${b.locked?'disabled':''}/>°</label>${button('rotate','90도 회전',icon('rotate-cw')+'90도 회전')}`:''}
- ${!single?['left','center-x','right','top','center-y','bottom'].map((v,i)=>button('align-'+v,['왼쪽 맞춤','가로 가운데 맞춤','오른쪽 맞춤','위쪽 맞춤','세로 가운데 맞춤','아래쪽 맞춤'][i],['왼쪽','가로 중앙','오른쪽','위쪽','세로 중앙','아래쪽'][i])).join(''):''}
+ </div>`;
+ menuRoot.innerHTML=`<div id="object-context-menu" class="object-context-menu" role="menu" aria-label="개체 컨텍스트 메뉴" hidden><strong>${escape(single?blockNames[b.type]:blocks.length+'개 개체')}</strong>
+ ${button('cut','잘라내기 (Ctrl+X)','잘라내기 <kbd>Ctrl+X</kbd>')}${button('copy','복사 (Ctrl+C)','복사 <kbd>Ctrl+C</kbd>')}<button data-block-action="paste-objects" ${objectClipboard?'':'disabled'} title="이 앱에서 복사한 개체를 붙여넣습니다. 외부 내용은 Ctrl+V를 사용하세요.">개체 붙여넣기 <kbd>Ctrl+V</kbd></button>
+ ${single?`${button('attach-link',blockLink(b)?'링크 수정 (Ctrl+K)':'링크 삽입 (Ctrl+K)',icon('link')+(blockLink(b)?'링크 수정…':'링크 삽입…'))}${blockLink(b)?`${button('follow-link','링크 열기','링크 열기')}${button('remove-link','링크 제거','링크 제거')}`:''}${button('edit-content','내용 편집 (F2)','내용 편집 <kbd>F2</kbd>')}`:''}
+ <strong>크기와 배치</strong>
+ ${single&&!b.parentId?`${number('x','X',Math.round(b.x),0,page().width)}${number('y','Y',Math.round(b.y),0,page().height)}${number('w','너비',Math.round(b.w),b.type==='calendar'?220:20,page().width)}${number('h','높이',Math.round(b.h),b.type==='calendar'?180:8,page().height)}<label>회전<input id="rotation-angle" data-prop="rotation" aria-label="회전 각도" type="number" min="-360" max="360" step="15" value="${Number.isFinite(Number(b.rotation))?Number(b.rotation):0}" ${b.locked?'disabled':''}/>°</label>${button('rotate','90도 회전',icon('rotate-cw')+'90도 회전')}`:''}
+
+ ${single&&isShape(b.type)?`<label><input data-prop="keepAspect" aria-label="비율 유지" type="checkbox" ${b.keepAspect?'checked':''}/>비율 유지</label>`:''}
  <label><input data-prop="locked" aria-label="위치 잠금" type="checkbox" ${blocks.every(b=>b.locked)?'checked':''}/>위치 잠금</label>
  ${button('front','맨 앞으로','맨 앞으로')}${button('back','맨 뒤로','맨 뒤로')}
  ${drawers.length&&blocks.every(b=>b.type!=='drawer')?`<select data-put-drawer aria-label="선택 개체를 서랍에 넣기"><option value="">서랍에 넣기…</option>${drawers.map(d=>`<option value="${d.id}">${escape(d.name||'새 서랍')}</option>`).join('')}</select>`:''}
@@ -538,7 +554,6 @@ function contextToolbar() {
  refreshIcons();bindHistoryButtons();
  box.querySelector('[data-line-toggle]')?.addEventListener('pointerdown',e=>e.preventDefault());
  box.querySelector('[data-line-toggle]')?.addEventListener('click',toggleCurrentLine);
- box.querySelector('[data-show-object-menu]').onclick=e=>{const rect=e.currentTarget.getBoundingClientRect();openObjectMenu(b.id,rect.left,rect.bottom);};
  if(objectMenuPosition?.id===selected)positionObjectMenu();else closeObjectMenu();
  controls.querySelectorAll('[data-format-toggle]').forEach(el=>el.onclick=()=>{const key=el.dataset.formatToggle;for(const b of blocks)b.format={...b.format,[key]:!format[key]};renderBlocks();persist();});
  controls.querySelectorAll('[data-prop]').forEach(el=>el.onchange=()=>{
@@ -551,9 +566,8 @@ function contextToolbar() {
    else if(prop==='fill'){if(block.type==='note'||isShape(block.type)){block.color=value;delete block.background;}else block.background=value;}
    else if(prop==='opacity')block.opacity=value/100;
    else if(prop==='direction'){if(block.type!==value)[block.w,block.h]=[block.h,block.w];block.type=value;}
-   else if(prop==='objectAlign'){if(value)alignSelection(value,true);break;}
    else if(prop==='rotation'){if(!block.locked)rotateBlock(block,value);}
-   else if(['x','y','w','h'].includes(prop)){if(!block.locked){block[prop]=value;clampBlock(block,page());}}
+   else if(['x','y','w','h'].includes(prop)){if(!block.locked){const ratio=block.w/block.h;block[prop]=value;if(block.keepAspect&&prop==='w')block.h=value/ratio;if(block.keepAspect&&prop==='h')block.w=value*ratio;clampBlock(block,page());}}
    else block[prop]=value;
   }
   renderBlocks();persist();
@@ -561,7 +575,12 @@ function contextToolbar() {
  controls.querySelector('[data-put-drawer]')?.addEventListener('change',e=>{if(!e.target.value)return;putInDrawer(page(),blocks.map(b=>b.id),e.target.value);renderBlocks();persist();});
  controls.querySelectorAll('[data-block-action]').forEach(el=>el.onclick=()=>{
   const a=el.dataset.blockAction;
-  if(a==='edit-link')return linkDialog(b.type,b);
+  if(a==='edit-link'||a==='attach-link')return linkDialog({block:b});
+  if(a==='follow-link'){closeObjectMenu();return followBlockLink(b);}
+  if(a==='remove-link'){removeBlockLink(b);editingLinkedId=null;renderBlocks();persist();return;}
+  if(a==='edit-content'){closeObjectMenu();return editBlockContent(b);}
+  if(a==='copy'||a==='cut')return copySelectedObjects(a==='cut');
+  if(a==='paste-objects')return pasteObjectClipboard();
   if(a==='open-file')return openRegisteredFile(b.fileId);
   if(a==='preview')return openPreview(b.fileId);
   if(a==='drawer-existing')return drawerChooser(b.id);
@@ -577,7 +596,6 @@ function contextToolbar() {
    selectedIds=new Set(copies.map(c=>c.id));selected=copies.at(-1)?.id||null;
   }
   if(a==='front'||a==='back'){const roots=blocks.filter(b=>!b.parentId),ids=new Set(roots.map(b=>b.id)),other=page().blocks.filter(b=>!ids.has(b.id));page().blocks=a==='front'?[...other,...roots]:[...roots,...other];}
-  if(a.startsWith('align-'))alignSelection(a.slice(6));
   if(['row','column','remove-row','remove-column'].includes(a)) {
    b.cells??=[['할 일','상태','비고'],['자료 정리','진행 중',''],['아이디어 모으기','예정',''],['함께 검토하기','예정','']];
    try{if(a==='row')tableCells(b.cells.length+1,b.cells[0].length);if(a==='column')tableCells(b.cells.length,b.cells[0].length+1);}catch(error){toast(error.message);return;}
@@ -589,21 +607,6 @@ function contextToolbar() {
   }
   renderBlocks();persist();
  });
-}
-function alignSelection(direction,toPage=false) {
- const blocks=selectionBlocks().filter(b=>!b.parentId&&!b.locked);
- if(!blocks.length)return;
- const bounds=blocks.map(rotatedBounds),left=toPage||blocks.length===1?0:Math.min(...bounds.map(r=>r.left)),right=toPage||blocks.length===1?page().width:Math.max(...bounds.map(r=>r.right)),top=toPage||blocks.length===1?0:Math.min(...bounds.map(r=>r.top)),bottom=toPage||blocks.length===1?page().height:Math.max(...bounds.map(r=>r.bottom));
- for(let i=0;i<blocks.length;i++) {
-  const b=blocks[i],r=bounds[i];
-  if(direction==='left')b.x+=left-r.left;
-  if(direction==='right')b.x+=right-r.right;
-  if(direction==='top')b.y+=top-r.top;
-  if(direction==='bottom')b.y+=bottom-r.bottom;
-  if(direction==='center-x')b.x+=(left+right-r.left-r.right)/2;
-  if(direction==='center-y')b.y+=(top+bottom-r.top-r.bottom)/2;
-  clampBlock(b,page());
- }
 }
 function deleteSelection() {
  const entries=deleteBlocks(page(),[...selectedIds]);
@@ -672,7 +675,7 @@ function onCanvasPointer(e) {
  const b=page().blocks.find(b=>b.id===el.dataset.id);if(!b)return;
  const edge=e.target.closest('.select-edge'),resize=e.target.closest('.resize-handle'),rotate=e.target.closest('.rotate-handle'),grip=e.target.closest('.drag-handle');
  const drag=!!(edge||grip||e.target.closest('.file-open,.board-link')||!e.target.closest('button,input,select,textarea,[contenteditable],video'));
- if((e.shiftKey||e.ctrlKey||e.metaKey)&&!e.target.closest('[contenteditable],input,textarea,select')){selectBlock(b.id,{toggle:true});e.preventDefault();window.addEventListener('pointerup',()=>consumeBoardClick(),{once:true,capture:true});return;}
+ if((e.shiftKey||e.ctrlKey||e.metaKey)&&!resize&&!rotate&&!grip&&!e.target.closest('[contenteditable],input,textarea,select')){selectBlock(b.id,{toggle:true});e.preventDefault();window.addEventListener('pointerup',()=>consumeBoardClick(),{once:true,capture:true});return;}
  selectBlock(b.id,{preserve:drag});
  if(edge||resize||rotate||grip)window.getSelection()?.removeAllRanges();
  if(edge){edge.focus();e.preventDefault();}
@@ -695,7 +698,8 @@ function onCanvasPointer(e) {
    rotateBlock(b,Math.round(((original.rotation||0)+(angle-initialAngle)*180/Math.PI)/15)*15);
   } else if(resize) {
    const local=rotatedDelta(dx,dy,original.rotation||0);
-   b.w=Math.max(b.type==='vline'?8:80,snap(original.w+local.x));b.h=Math.max(b.type==='hline'?8:36,snap(original.h+local.y));clampBlock(b,page());
+   b.w=Math.max(b.type==='calendar'?220:b.type==='vline'?8:80,snap(original.w+local.x));b.h=Math.max(b.type==='calendar'?180:b.type==='hline'?8:36,snap(original.h+local.y));
+   if(b.keepAspect||e.shiftKey){const ratio=original.w/original.h;if(Math.abs(local.x/original.w)>=Math.abs(local.y/original.h))b.h=b.w/ratio;else b.w=b.h*ratio;}clampBlock(b,page());
   } else {
    const delta=groupDelta(snapshots,page(),dx,dy);
    moving.forEach((block,i)=>{block.x=snapshots[i].x+delta.x;block.y=snapshots[i].y+delta.y;});
@@ -722,7 +726,7 @@ async function action(a) {
   if (a === "backup-menu") return backupMenu();
   if (a === "connection") return connectionHelp();
   if (a === "media") { mediaParent=null;$("#media-input").click(); return; }
-  if (a === "web" || a === "pagelink") return linkDialog(a);
+  if(a==='link')return linkDialog();
   if (a === "register") return pickFiles();
   if (a === "path-shortcut") {
     if (!window.moaDesktop?.registerPaths) return connectionHelp();
@@ -769,6 +773,9 @@ async function action(a) {
     toast(`내 작업 공간에 ${state.pages.length}개의 페이지가 있습니다.`);
 }
 async function pickFiles() {
+  fileConnectDialog();
+}
+async function chooseOriginalFiles() {
   fileParent=null;
   if(window.moaDesktop?.nativeDropPaths){$('#file-input').click();return;}
   if (window.moaDesktop) return nativePicker("file");
@@ -1143,21 +1150,25 @@ async function hydrateMedia() {
     } catch (e) { if (target.isConnected) target.textContent = e.message; }
   }
 }
-function linkDialog(type, existing) {
-  const isWeb = type === "web";
-  const options = state.pages.map(p => `<option value="${p.id}" ${p.id === existing?.targetPage ? "selected" : ""}>${escape(p.title)}</option>`).join("");
-  modal(isWeb ? "인터넷 링크 추가" : "페이지 링크 추가", `<form id="link-form" class="insert-form"><label>표시 이름 (선택)<input name="label" maxlength="150" value="${escape(existing?.text || "")}" placeholder="비워두면 주소 또는 페이지 이름을 표시합니다"/></label>${isWeb ? `<label>인터넷 주소<input name="url" required value="${escape(existing?.url || "")}" placeholder="https://example.com"/></label>` : `<label>이동할 페이지<select name="target">${options}</select></label>`}<p id="link-error" role="alert"></p><button class="primary-btn" type="submit">${existing ? "수정" : "추가"}</button></form>`);
-  $("#link-form").onsubmit = e => {
-    e.preventDefault();
-    const form = e.target;
-    try {
-      const fields = { text: form.elements.label.value.trim(), ...(isWeb ? { url: webURL(form.elements.url.value) } : { targetPage: form.elements.target.value }) };
-      if (existing) { Object.assign(existing, fields); renderBlocks(); persist(); }
-      else addBlock(type, fields);
-      closeModal();
-    } catch (error) { $("#link-error").textContent = error.message; }
-  };
-  $(isWeb ? '[name="url"]' : '[name="target"]').focus();
+function linkDialog({block=null}={}) {
+ closeObjectMenu();
+ const current=block?blockLink(block):null,isCard=!block||['web','pagelink'].includes(block.type);
+ const options=state.pages.map(p=>`<option value="${p.id}" ${p.id===current?.pageId?'selected':''}>${escape(p.title)}</option>`).join('');
+ modal(block?'링크 설정':'링크 추가',`<form id="link-form" class="insert-form"><label>연결 종류<select name="kind" aria-label="연결 종류"><option value="web">인터넷 주소</option><option value="page">보드 페이지</option></select></label>${isCard?`<label>표시 이름 (선택)<input name="label" maxlength="150" value="${escape(block?.text||'')}" placeholder="비워두면 주소 또는 페이지 이름을 표시합니다"/></label>`:''}<label data-web-field>인터넷 주소<input name="url" value="${escape(current?.url||'')}" placeholder="https://example.com"/></label><label data-page-field>이동할 페이지<select name="target">${options}</select></label>${!isCard?'<p class="muted">개체를 클릭하면 이동합니다. 테두리·손잡이로 선택·이동하고 F2로 내용 편집, Esc로 편집을 끝냅니다.</p>':''}<p id="link-error" role="alert"></p><div class="form-footer"><button type="button" class="secondary-btn" data-link-cancel>취소</button><button class="primary-btn" type="submit">${block?'적용':'추가'}</button></div></form>`);
+ const form=$('#link-form');form.elements.kind.value=current?.kind||'web';
+ const update=()=>{const web=form.elements.kind.value==='web';form.querySelector('[data-web-field]').hidden=!web;form.querySelector('[data-page-field]').hidden=web;form.elements.url.required=web;};
+ form.elements.kind.onchange=update;update();form.querySelector('[data-link-cancel]').onclick=closeModal;
+ form.onsubmit=e=>{
+  e.preventDefault();
+  try {
+   const link=checkedLink(form.elements.kind.value==='web'?{kind:'web',url:form.elements.url.value}:{kind:'page',pageId:form.elements.target.value});
+   if(link.kind==='page'&&!state.pages.some(p=>p.id===link.pageId))throw Error('연결할 페이지를 선택해 주세요.');
+   const label=form.elements.label?.value.trim();
+   if(block){setBlockLink(block,link);if(isCard)block.text=label;editingLinkedId=null;closeModal();renderBlocks();persist();}
+   else{closeModal();addBlock(link.kind==='web'?'web':'pagelink',{text:label,...(link.kind==='web'?{url:link.url}:{targetPage:link.pageId})});}
+  }catch(error){$('#link-error').textContent=error.message;}
+ };
+ (current?.kind==='page'?form.elements.target:form.elements.url).focus();
 }
 function calendarEvent(block, date) {
   modal(`${date} 일정`, `<form id="event-form" class="insert-form"><label>일정 또는 메모<textarea name="event" rows="5" maxlength="2000" placeholder="이 날짜에 할 일을 기록하세요.">${escape(block.events?.[date] || "")}</textarea></label><div class="event-actions"><button class="secondary-btn" type="button" id="delete-event">일정 삭제</button><button class="primary-btn" type="submit">저장</button></div></form>`);
@@ -1173,7 +1184,7 @@ function calendarEvent(block, date) {
 function help() {
   modal(
     "코션 사용 가이드",
-    `<div class="help-body"><div class="help-intro">업무를 가로로 넓게 펼쳐보세요.</div><p>상단 도구모음에서 메모, 표, 도형과 가로·세로 구분선을 추가합니다. 개체를 선택한 뒤 이동·크기 손잡이를 드래그하면 20px 격자에 맞춥니다. 회전 손잡이는 15도 간격이며 우클릭 메뉴에서 각도를 입력하거나 90도씩 회전할 수 있습니다.</p><p>개체를 우클릭하면 위치·크기·회전·정렬·잠금·앞뒤 순서·서랍 넣기·복제·삭제 메뉴가 열립니다. Shift+F10 또는 개체 메뉴 버튼으로도 열고 Esc 또는 바깥 클릭으로 닫습니다. 표 버튼에서는 줄·칸 수와 표 크기, 제목 줄을 정합니다.</p><h3>Windows 단축키</h3><p>Ctrl+C/X/V 복사·잘라내기·붙여넣기, Ctrl+D 복제, Ctrl+Z 취소, Ctrl+Y 또는 Ctrl+Shift+Z 다시 실행, Ctrl+S 저장, Ctrl+N 새 페이지, Ctrl+O 파일 연결을 지원합니다. 텍스트에는 Ctrl+B/I/U 서식과 Ctrl+L/E/R 정렬을 적용합니다. 입력 중이 아닐 때 방향키는 1px, Shift+방향키는 10px 이동합니다.</p><h3>새 블록 삽입</h3><p>서랍을 추가하고 화살표를 눌러 펼치세요. 기존 개체를 담거나 파일·이미지·GIF·영상·메모를 목록으로 추가하고 순서를 바꾸거나 꺼낼 수 있습니다. 개체 테두리를 클릭하면 선택됩니다.</p><p>텍스트·메모·도형·표에서 커서를 놓고 취소선 옆 줄 체크박스를 누르면 그 줄에 체크를 붙입니다. 체크하면 자동 줄바꿈된 부분까지 해당 줄 전체에 취소선이 적용됩니다. Enter로 다음 체크 줄을 만들고 빈 체크 줄에서 Enter를 누르면 체크를 끝냅니다. 같은 서식 버튼으로 현재 줄의 체크를 제거합니다. 상단 도구모음에서 미디어·인터넷 링크·달력·페이지 링크를 추가하세요. 이미지와 GIF는 보드 안에 표시되고 영상은 재생 버튼으로 볼 수 있습니다. 미디어는 브라우저에 사본으로 저장하며 파일당 100MB까지 지원합니다. 달력 날짜를 누르면 일정 메모를 저장할 수 있습니다. 인터넷 링크는 새 탭으로, 페이지 링크는 해당 보드 페이지로 이동합니다.</p><h3>원본 파일을 바로가기로 연결</h3><p>Windows에서는 ZIP을 풀고 <strong>코션 실행.vbs</strong>를 실행하세요. 검은 창 없이 전용 HTML 창이 열리고 파일 카드 클릭 시 한글·Excel 등 PC 기본 프로그램으로 그 원본을 엽니다. 파일 내용을 내려받거나 사본으로 저장하지 않습니다.</p><p>전용 창에 파일을 끌어놓으면 원본 확인 창 없이 연결합니다. 파일 연결 버튼이나 경로 붙여넣기도 사용할 수 있습니다. 폴더를 미리 지정할 필요가 없습니다. 일반 브라우저에서는 드래그한 파일의 전체 경로를 받을 수 없습니다. 원본을 이동하거나 삭제하면 다시 연결해 주세요.</p><p>코션.html만 직접 열면 브라우저 미리보기 모드이며 PC 기본 프로그램 실행은 지원하지 않습니다. 지원 브라우저에서는 원본 핸들을, 그 외에는 등록 시점의 사본을 보관한다고 표시합니다.</p><h3>미리보기</h3><p>마우스를 올리거나 카드의 눈 버튼을 누르세요. PDF는 실제 첫 페이지를 이미지로 표시합니다. HWP/HWPX는 저장된 미리보기를, Word·Excel·PowerPoint는 저장된 이미지 또는 설치된 Office를 사용합니다. 미리보기가 지원되지 않으면 이유를 표시하고 텍스트·표로 전환합니다.</p><h3>페이지와 저장</h3><p>페이지 크기는 고정하고 가로폭에 맞춰 표시합니다. 긴 보드는 세로로 스크롤합니다. 작은 페이지 이름은 위쪽 경로에서 수정하고 아래 숫자 버튼으로 페이지를 이동하세요.</p><p>작업은 현재 창의 저장 공간에 자동 저장됩니다. 기존 Chrome·Edge와 새 전용 창, HTML 직접 실행은 저장 공간이 다릅니다. 백업·복원으로 옮기고 주기적으로 보관하세요. 사이트 데이터를 지우면 작업이 사라집니다. 클라우드 동기화는 제공하지 않습니다.</p></div>`,
+    `<div class="help-body"><div class="help-intro">업무를 가로로 넓게 펼쳐보세요.</div><p>상단 도구모음에서 메모, 표, 도형과 가로·세로 구분선을 추가합니다. 개체를 선택한 뒤 이동·크기 손잡이를 드래그하면 20px 격자에 맞춥니다. 회전 손잡이는 15도 간격이며 우클릭 메뉴에서 각도를 입력하거나 90도씩 회전할 수 있습니다.</p><p>개체를 우클릭하면 위치·크기·회전·잠금·앞뒤 순서·서랍 넣기·복제·삭제 메뉴가 열립니다. Shift+F10으로도 열고 Esc 또는 바깥 클릭으로 닫습니다. 표 버튼에서는 줄·칸 수와 표 크기, 제목 줄을 정합니다.</p><h3>Windows 단축키</h3><p>Ctrl+C/X/V 복사·잘라내기·붙여넣기, Ctrl+D 복제, Ctrl+Z 취소, Ctrl+Y 또는 Ctrl+Shift+Z 다시 실행, Ctrl+S 저장, Ctrl+N 새 페이지, Ctrl+O 파일 연결을 지원합니다. 텍스트에는 Ctrl+B/I/U 서식과 Ctrl+L/E/R 정렬을 적용합니다. 입력 중이 아닐 때 방향키는 1px, Shift+방향키는 10px 이동합니다.</p><h3>새 블록 삽입</h3><p>서랍을 추가하고 화살표를 눌러 펼치세요. 기존 개체를 담거나 파일·이미지·GIF·영상·메모를 목록으로 추가하고 순서를 바꾸거나 꺼낼 수 있습니다. 개체 테두리를 클릭하면 선택됩니다.</p><p>텍스트·메모·도형·표에서 커서를 놓고 취소선 옆 줄 체크박스를 누르면 그 줄에 체크를 붙입니다. 체크하면 자동 줄바꿈된 부분까지 해당 줄 전체에 취소선이 적용됩니다. Enter로 다음 체크 줄을 만들고 빈 체크 줄에서 Enter를 누르면 체크를 끝냅니다. 같은 서식 버튼으로 현재 줄의 체크를 제거합니다. 상단 도구모음에서 미디어·달력·링크를 추가하세요. 링크 창에서 인터넷 주소 또는 보드 페이지를 선택합니다. 개체 우클릭 → 링크 삽입 또는 Ctrl+K로 개체 자체에 링크를 걸고 클릭하면 이동합니다. F2로 내용을 편집하고 Esc로 편집을 끝냅니다. 새 도형은 정비율로 생성하며 비율 유지 또는 Shift로 비율을 유지해 크기를 바꿉니다. 달력 글자는 크기에 따라 조절되고 날짜는 왼쪽 위에 표시합니다. 서랍 위 휠은 서랍 목록을 스크롤합니다. 이미지와 GIF는 보드 안에 표시되고 영상은 재생 버튼으로 볼 수 있습니다. 미디어는 브라우저에 사본으로 저장하며 파일당 100MB까지 지원합니다. 달력 날짜를 누르면 일정 메모를 저장할 수 있습니다. 인터넷 링크는 새 탭으로, 페이지 링크는 해당 보드 페이지로 이동합니다.</p><h3>원본 파일을 바로가기로 연결</h3><p>Windows에서는 ZIP을 풀고 <strong>코션 실행.vbs</strong>를 실행하세요. 검은 창 없이 전용 HTML 창이 열리고 파일 카드 클릭 시 한글·Excel 등 PC 기본 프로그램으로 그 원본을 엽니다. 파일 내용을 내려받거나 사본으로 저장하지 않습니다.</p><p>전용 창에 파일을 끌어놓으면 원본 확인 창 없이 연결합니다. 파일 연결 창에서 파일을 선택하거나 ‘파일 선택이 열리지 않나요?’의 경로 붙여넣기를 사용할 수 있습니다. 폴더를 미리 지정할 필요가 없습니다. 일반 브라우저에서는 드래그한 파일의 전체 경로를 받을 수 없습니다. 원본을 이동하거나 삭제하면 다시 연결해 주세요.</p><p>코션.html만 직접 열면 브라우저 미리보기 모드이며 PC 기본 프로그램 실행은 지원하지 않습니다. 지원 브라우저에서는 원본 핸들을, 그 외에는 등록 시점의 사본을 보관한다고 표시합니다.</p><h3>미리보기</h3><p>마우스를 올리거나 카드의 눈 버튼을 누르세요. PDF는 실제 첫 페이지를 이미지로 표시합니다. HWP/HWPX는 저장된 미리보기를, Word·Excel·PowerPoint는 저장된 이미지 또는 설치된 Office를 사용합니다. 미리보기가 지원되지 않으면 이유를 표시하고 텍스트·표로 전환합니다.</p><h3>페이지와 저장</h3><p>페이지 크기는 고정하고 가로폭에 맞춰 표시합니다. 긴 보드는 세로로 스크롤합니다. 작은 페이지 이름은 위쪽 경로에서 수정하고 아래 숫자 버튼으로 페이지를 이동하세요.</p><p>작업은 현재 창의 저장 공간에 자동 저장됩니다. 기존 Chrome·Edge와 새 전용 창, HTML 직접 실행은 저장 공간이 다릅니다. 백업·복원으로 옮기고 주기적으로 보관하세요. 사이트 데이터를 지우면 작업이 사라집니다. 클라우드 동기화는 제공하지 않습니다.</p></div>`,
   );
 }
 async function fileLibrary() {
@@ -1283,7 +1294,7 @@ function nudgeSelection(dx,dy) {
 }
 function clipboardCopy(event,cut=false) {
  if(editing(document.activeElement)||!selectedIds.size||!event.clipboardData)return;
- const payload=makeClipboard(page(),[...selectedIds]);if(!payload.blocks.length)return;
+ const payload=makeClipboard(page(),[...selectedIds]);if(!payload.blocks.length)return;objectClipboard=payload;
  event.clipboardData.setData(clipboardType,JSON.stringify(payload));
  event.clipboardData.setData('text/plain',payload.blocks.filter(b=>!b.parentId).map(b=>b.text||b.caption||b.name||blockNames[b.type]).join('\n'));
  event.preventDefault();if(cut)deleteSelection();else toast(`${selectedIds.size}개 개체 복사됨`);
@@ -1299,9 +1310,11 @@ document.addEventListener('cut',event=>clipboardCopy(event,true));
 document.addEventListener('paste',clipboardPaste);
 document.addEventListener('keydown',event=>{
  if(event.isComposing)return;
+ if(event.key==='Escape'&&editingLinkedId&&!objectMenuPosition){event.preventDefault();editingLinkedId=null;renderBlocks();$('#canvas')?.focus();return;}
  if(event.key==='Escape'&&objectMenuPosition){event.preventDefault();closeObjectMenu();$('#canvas')?.focus({preventScroll:true});return;}
  if(event.key==='ContextMenu'||event.shiftKey&&event.key==='F10'){if($('.modal'))return;if(selected){event.preventDefault();const rect=document.querySelector(`.block[data-id="${selected}"]`).getBoundingClientRect();openObjectMenu(selected,rect.left+20,rect.top+20);}return;}
  const key=event.key.toLowerCase(),control=event.ctrlKey||event.metaKey,field=event.target instanceof Element&&event.target.closest('input:not([type=checkbox]):not([type=radio]),select,textarea');
+ if(control&&key==='k'&&!field&&!$('.modal')){event.preventDefault();if(selectedIds.size===1)linkDialog({block:selectionBlocks()[0]});else linkDialog();return;}
  if(control&&key==='s'){event.preventDefault();saveNow();return;}
  if($('.modal')){if(event.key==='Escape')closeModal();return;}
  if(control&&!event.shiftKey&&!field&&['b','i','u','l','e','r'].includes(key)&&shortcutFormat(key)){event.preventDefault();return;}
@@ -1324,6 +1337,8 @@ document.addEventListener('keydown',event=>{
  if(arrow&&selectedIds.size){event.preventDefault();const factor=event.shiftKey?10:1;nudgeSelection(arrow[0]*factor,arrow[1]*factor);return;}
  if(event.key==='F2'||event.key==='Enter') {
   const b=selectionBlocks().find(b=>b.id===selected);if(!b)return;
+  if(event.key==='F2'){event.preventDefault();editBlockContent(b);return;}
+  if(event.key==='Enter'&&blockLink(b)){event.preventDefault();followBlockLink(b);return;}
   if(event.key==='Enter'&&b.type==='file'){event.preventDefault();openRegisteredFile(b.fileId);return;}
   if(event.key==='Enter'&&b.type==='drawer'){event.preventDefault();document.querySelector('[data-block-action=drawer-toggle]')?.click();return;}
   const root=document.querySelector(`.block[data-id="${b.id}"]`),target=root?.querySelector('[data-edit],input[data-drawer-name]')||document.querySelector('[data-prop=caption]');
@@ -1351,7 +1366,7 @@ function openObjectMenu(id,x,y) {
  objectMenuPosition={id:selected,x,y,scroll:menuScrollPosition()};positionObjectMenu();
  $('#object-context-menu')?.querySelector('select,input,button')?.focus({preventScroll:true});
 }
-document.addEventListener('pointerdown',e=>{if(!e.target.closest('.object-context-menu,[data-show-object-menu]'))closeObjectMenu();},true);
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('.object-context-menu'))closeObjectMenu();},true);
 window.addEventListener('resize',closeObjectMenu);
 function menuScrollPosition(){const v=$('#viewport');return [v?.scrollLeft,v?.scrollTop,window.scrollX,window.scrollY].join(',');}
 // Ignore queued scroll events from before the menu opened; close on actual board movement.
@@ -1430,4 +1445,41 @@ function toggleCurrentLine() {
  const cell=root.dataset.cell,text=blockText(b,cell),line=text.slice(0,caret.focus).split('\n').length-1,checks=[...checksFor(b,cell)];
  checks[line]=typeof checks[line]==='boolean'?null:false;setChecks(b,cell,checks);
  root.innerHTML=lineMarkup(text,checks,escape);setEditorSelection(root,caret.anchor,caret.focus);persist();
+}
+
+function followBlockLink(block) {
+ const link=blockLink(block);if(!link){toast('유효한 링크가 없습니다. 우클릭 메뉴에서 다시 설정해 주세요.');return;}
+ if(link.kind==='page'){
+  if(!state.pages.some(p=>p.id===link.pageId)){toast('연결된 페이지가 삭제되었습니다. 링크를 다시 설정해 주세요.');return;}
+  editingLinkedId=null;switchPage(link.pageId);
+ }else window.open(link.url,'_blank','noopener,noreferrer');
+}
+function editBlockContent(block) {
+ editingLinkedId=block.hyperlink?block.id:null;renderBlocks();
+ const root=document.querySelector(`.block[data-id="${block.id}"]`),target=root?.querySelector('[data-edit],[data-cell],input[data-drawer-name]')||document.querySelector('[data-prop=caption]');
+ if(target){target.focus({preventScroll:true});if(block.hyperlink)toast('내용 편집 중 · Esc로 끝내기');}
+ else toast('위쪽 설정 줄에서 개체 설정을 변경하세요.');
+}
+function drawerWheel(event) {
+ if(event.ctrlKey)return;
+ const drawer=event.target.closest('.block-drawer'),list=drawer?.querySelector(':scope > .drawer-list');
+ if(!list||list.scrollHeight<=list.clientHeight+1)return;
+ const delta=(event.deltaY||event.deltaX)*(event.deltaMode===1?16:event.deltaMode===2?list.clientHeight:1);
+ if(!delta)return;event.preventDefault();event.stopPropagation();list.scrollTop+=delta;
+}
+function copySelectedObjects(cut=false) {
+ const payload=makeClipboard(page(),[...selectedIds]);if(!payload.blocks.length)return;
+ objectClipboard=payload;closeObjectMenu();window.getSelection()?.removeAllRanges();$('#canvas').focus({preventScroll:true});
+ document.execCommand('copy');
+ if(cut)deleteSelection();else toast(`${payload.blocks.length}개 개체 복사됨`);
+}
+function pasteObjectClipboard() {
+ if(!objectClipboard)return;
+ try{const roots=pasteBlocks(page(),readClipboard(JSON.stringify(objectClipboard)));selectedIds=new Set(roots.map(b=>b.id));selected=roots.at(-1)?.id||null;closeObjectMenu();renderBlocks();persist();toast(`${roots.length}개 개체 붙여넣기`);}catch(error){toast(error.message);}
+}
+function fileConnectDialog() {
+ closeObjectMenu();
+ modal('파일 연결',`<div class="insert-form file-connect-options"><p>탐색기에서 파일을 골라 원본 위치를 연결하세요. 전용 창에서는 파일을 보드에 끌어놓아도 됩니다.</p><button class="primary-btn" id="choose-original">${icon('folder-open')}파일 선택</button><details><summary>파일 선택이 열리지 않나요?</summary><p>선택 창이 열리지 않을 때 원본 파일의 전체 경로를 직접 붙여넣어 연결할 수 있습니다.</p><button class="secondary-btn" id="connect-by-path">경로 붙여넣기</button></details></div>`);
+ $('#choose-original').onclick=()=>{closeModal();chooseOriginalFiles();};
+ $('#connect-by-path').onclick=()=>action('path-shortcut');
 }

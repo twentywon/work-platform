@@ -30,7 +30,7 @@ try {
       return "";
     };
   }, fixture);
-  await win.locator(".toolbar [data-action=register]").click();
+  await win.locator(".toolbar [data-action=register]").click();await win.locator("#choose-original").click();
   const card = win
     .locator(".file-open")
     .filter({ hasText: "native-document.txt" });
@@ -132,7 +132,7 @@ try {
     .toBe(fixture);
   await win.locator("#close-modal").click();
   await win.locator('[data-menu=extras]').click();
-  await win.locator('[data-action=web]').click();
+  await win.locator('[data-action=link]').click();
   await win.locator('[name=url]').fill('https://example.com/team');
   await win.locator('#link-form [type=submit]').click();
   await win.locator('.block-web a').click();

@@ -37,7 +37,7 @@ try {
   assert.equal((await request('preview-start',{id:original})).status,400);
   assert.equal((await request('paths',{paths:['relative.txt']})).status,400);
   const status=await(await request('status')).json();
-  assert.equal(status.version,'0.9.0');assert.equal(status.folderCount,0);
+  assert.equal(status.version,'0.10.0');assert.equal(status.folderCount,0);
   const direct=await(await request('paths',{paths:['"'+original+'"']})).json();
   assert.equal(direct.files[0].id,'approved-file');assert.equal(direct.files[0].path,original);
   await writeFile(original,'수정된 원본의 최신 내용');
@@ -108,11 +108,11 @@ try {
   await drawer.locator('.file-open').filter({hasText:'원본 문서.txt'}).waitFor();
   assert.equal(pickerRequests,0);assert.equal(await page.evaluate(()=>window.nativePathMessages),3);
   // Manual path fallback also works without any registered folder.
-  await page.locator('[data-action=path-shortcut]').click();await page.locator('[name=paths]').fill(original);await page.locator('#save-path').click();
+  await page.locator('[data-action=register]').click();await page.locator('details summary').click();await page.locator('#connect-by-path').click();await page.locator('[name=paths]').fill(original);await page.locator('#save-path').click();
   await page.locator('#path-form').waitFor({state:'detached'});
   // Real PDF rendering runs under the helper's actual CSP, with no external assets.
   const pdfFile=path.join(root,'real-first-page.pdf');await cp('tests/fixtures/first-page.pdf',pdfFile);
-  await page.locator('[data-action=path-shortcut]').click();await page.locator('[name=paths]').fill(pdfFile);await page.locator('#save-path').click();
+  await page.locator('[data-action=register]').click();await page.locator('details summary').click();await page.locator('#connect-by-path').click();await page.locator('[name=paths]').fill(pdfFile);await page.locator('#save-path').click();
   const pdfCard=page.locator('.file-open').filter({hasText:'real-first-page.pdf'});await pdfCard.waitFor();await pdfCard.hover();
   const image=page.locator('#hover-preview img[alt="PDF 첫 페이지 이미지"]');await image.waitFor();
   assert.ok(await image.evaluate(i=>i.complete&&i.naturalWidth>0));
@@ -124,7 +124,7 @@ try {
     return route.continue();
   });
   await page.route('**/api/job-content',async route=>route.fulfill({contentType:'application/pdf',body:await readFile('tests/fixtures/first-page.pdf')}));
-  await page.locator('[data-action=path-shortcut]').click();await page.locator('[name=paths]').fill(docFile);await page.locator('#save-path').click();
+  await page.locator('[data-action=register]').click();await page.locator('details summary').click();await page.locator('#connect-by-path').click();await page.locator('[name=paths]').fill(docFile);await page.locator('#save-path').click();
   const docCard=page.locator('.file-open').filter({hasText:'office-first.doc'});await docCard.waitFor();
   await docCard.locator('..').locator('[data-preview-file]').click();
   await page.locator('#preview-body img[alt="첫 페이지 이미지 미리보기"]').waitFor();

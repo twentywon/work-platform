@@ -230,7 +230,7 @@ test("browser linked file reads latest source after changes", async ({
     await writer.close();
     window.showOpenFilePicker = async () => [handle];
   });
-  await page.locator(".toolbar [data-action=register]").click();
+  await page.locator(".toolbar [data-action=register]").click();await page.locator('#choose-original').click();
   const card = page.locator(".file-open").filter({ hasText: "linked.txt" });
   await card.click();
   await expect(page.locator("#preview-body")).toContainText(
@@ -279,7 +279,7 @@ test("desktop bridge registers original paths, opens native files and previews s
       }),
     };
   });
-  await page.locator(".toolbar [data-action=register]").click();
+  await page.locator(".toolbar [data-action=register]").click();await page.locator('#choose-original').click();
   await page.locator(".file-open").filter({ hasText: "desktop.txt" }).click();
   expect(await page.evaluate(() => window.nativeOpened)).toEqual([
     "native-123",
@@ -375,7 +375,8 @@ test('board fills the width, title panel is removed, rotation persists and movem
 });
 
 async function insertExtra(page, action) {
-  await page.locator(action).click();
+ if(action.includes('data-action=web')||action.includes('data-action=pagelink')){await page.locator('[data-action=link]').click();await page.locator('[name=kind]').selectOption(action.includes('pagelink')?'page':'web');}
+ else await page.locator(action).click();
 }
 test('checkboxes, web links and page links persist and navigate', async ({page}) => {
   await expect(page.locator('.canvas-meta')).toHaveCount(0);
@@ -460,19 +461,19 @@ test('native selection shows waiting, cancellation and persistent connection err
       chooseFolder:async()=>{throw Error('도우미 연결 오류: 테스트')},
     };
   });
-  await page.locator('.toolbar [data-action=register]').click();
+  await page.locator('.toolbar [data-action=register]').click();await page.locator('#choose-original').click();
   await expect(page.locator('#native-picker-wait')).toContainText('Windows 파일 선택 창');
   await page.evaluate(()=>window.finishPick([]));
   await expect(page.locator('.modal')).toHaveCount(0);
   await expect(page.locator('#toast')).toContainText('선택을 취소');
   await page.evaluate(()=>window.moaDesktop.pickFiles=async()=>{throw Error('도우미 연결 오류: 테스트')});
-  await page.locator('.toolbar [data-action=register]').click();
+  await page.locator('.toolbar [data-action=register]').click();await page.locator('#choose-original').click();
   await expect(page.locator('#connection-detail')).toContainText('도우미 연결 오류: 테스트');
   await expect(page.locator('.modal')).toContainText('코션 실행.vbs');
   expect(await page.evaluate(()=>window.pickCount)).toBe(1);
 });
 test('browser-only path button explains how to activate original shortcuts', async ({page}) => {
-  await page.locator('[data-action=path-shortcut]').click();
+  await page.locator('[data-action=register]').click();await page.locator('details summary').click();await page.locator('#connect-by-path').click();
   await expect(page.locator('#connection-detail')).toContainText('미리보기 모드');
   await expect(page.locator('.modal')).toContainText('http://127.0.0.1:17843');
 });
@@ -509,7 +510,7 @@ test('object borders select file cards without opening them',async({page})=>{
   window.edgeOpened=[];
   window.moaDesktop={pickFiles:async()=>[{id:'edge-file',name:'border.txt',path:'C:/Docs/border.txt'}],openFile:async id=>window.edgeOpened.push(id)};
  });
- await page.locator('.toolbar [data-action=register]').click();
+ await page.locator('.toolbar [data-action=register]').click();await page.locator('#choose-original').click();
  const block=page.locator('.block-file').filter({hasText:'border.txt'});
  await page.locator('#canvas').click({position:{x:10,y:10}});
  await block.locator('.edge-right').click();
@@ -643,8 +644,7 @@ test('marquee, additive selection and group drag preserve relative placement',as
  await page.mouse.move(grip.x+5,grip.y+5);await page.mouse.down();await page.mouse.move(grip.x+5+60*start.z,grip.y+5+40*start.z,{steps:6});await page.mouse.up();
  expect(await page.locator('[data-id=a]').evaluate(el=>[parseFloat(el.style.left),parseFloat(el.style.top)])).toEqual([160,140]);
  expect(await page.locator('[data-id=b]').evaluate(el=>[parseFloat(el.style.left),parseFloat(el.style.top)])).toEqual([460,170]);
- await openObjectMenu(page);await page.locator('[data-block-action=align-left]').click();
- expect(await page.locator('[data-id=b]').evaluate(el=>parseFloat(el.style.left))).toBeLessThan(200);
+ await openObjectMenu(page);await expect(page.locator('[data-block-action^=align-]')).toHaveCount(0);await page.keyboard.press('Escape');
  await page.locator('#canvas').focus();await page.keyboard.press('Delete');await expect(page.locator('.block')).toHaveCount(1);
  await page.keyboard.press('Control+z');await expect(page.locator('.block')).toHaveCount(3);
 });
@@ -707,7 +707,7 @@ test('media and line settings persist and position locking prevents accidental m
 test('dragging a native shortcut into a drawer preserves identity without opening or copying it',async({page})=>{
  await seedInteractionBoard(page,[]);
  await page.evaluate(()=>{window.nativeOpened=[];window.moaDesktop={pickFiles:async()=>[{id:'native-original',name:'원본.hwp',path:'C:/Documents/원본.hwp'}],openFile:async id=>window.nativeOpened.push(id)};});
- await page.locator('.toolbar [data-action=register]').click();
+ await page.locator('.toolbar [data-action=register]').click();await page.locator('#choose-original').click();
  const card=page.locator('.file-open');const fileId=await card.getAttribute('data-file');
  await card.click({modifiers:['Shift']});await expect(page.locator('.block.selected')).toHaveCount(0);expect(await page.evaluate(()=>window.nativeOpened)).toEqual([]);
  await page.locator('[data-add=drawer]').click();await editSetting(page,'x',700);await editSetting(page,'y',100);await page.keyboard.press('Escape');
@@ -800,14 +800,11 @@ test('Windows edit shortcuts format, nudge, save and undo/redo without losing co
  let downloads=0;page.on('download',()=>downloads++);await page.keyboard.press('Control+s');await expect(page.locator('#toast')).toContainText('저장했습니다');expect(downloads).toBe(0);
  await page.reload();await expect(page.locator('.block-text')).toHaveCount(2);
 });
-test('single object alignment uses the board while multiple alignment uses selected objects',async({page})=>{
- await seedInteractionBoard(page,[{id:'a',type:'note',x:100,y:100,w:200,h:150},{id:'b',type:'note',x:500,y:100,w:200,h:150}]);
- await page.locator('[data-id=a] > .edge-bottom').click();await openObjectMenu(page);await page.locator('[data-prop=objectAlign]').selectOption('center-x');
- expect(await page.locator('[data-id=a]').evaluate(el=>parseFloat(el.style.left))).toBe(480);
- await openObjectMenu(page);await page.locator('[data-prop=objectAlign]').selectOption('left');expect(await page.locator('[data-id=a]').evaluate(el=>parseFloat(el.style.left))).toBe(0);
- await openObjectMenu(page);await page.locator('[data-prop=objectAlign]').selectOption('right');expect(await page.locator('[data-id=a]').evaluate(el=>parseFloat(el.style.left))).toBe(960);
- await page.locator('[data-id=b] > .edge-bottom').click({modifiers:['Shift']});await openObjectMenu(page);await page.locator('[data-block-action=align-left]').click();
- expect(await page.locator('[data-id=a]').evaluate(el=>parseFloat(el.style.left))).toBe(500);
+test('object alignment and the toolbar object-menu button are removed',async({page})=>{
+ await seedInteractionBoard(page,[{id:'a',type:'note',x:100,y:100},{id:'b',type:'note',x:500,y:100}]);
+ await page.locator('[data-id=a] > .edge-bottom').click();await openObjectMenu(page);
+ await expect(page.locator('[data-prop=objectAlign],[data-block-action^=align-],[data-show-object-menu]')).toHaveCount(0);
+ await page.keyboard.press('Escape');await page.locator('[data-id=b] > .edge-bottom').click({modifiers:['Shift']});await openObjectMenu(page);await expect(page.locator('[data-block-action^=align-]')).toHaveCount(0);
 });
 test('object keyboard copy/cut/paste preserves drawer references across pages',async({page})=>{
  await seedInteractionBoard(page,[{id:'d',type:'drawer',x:100,y:100,w:380,h:60},{id:'child',parentId:'d',type:'file',x:0,y:0,w:290,h:86,fileId:'native-file',name:'original.hwp'}]);
@@ -847,7 +844,7 @@ async function caretInLine(editor,index,offset=0) {
 }
 test('insertion tools are visible and table dialog validates dimensions, cancellation and headers',async({page})=>{
  await expect(page.locator('[data-menu=extras],[data-add=checkbox],[data-drawer-check]')).toHaveCount(0);
- for(const selector of ['[data-action=media]','[data-action=web]','[data-add=calendar]','[data-action=pagelink]'])await expect(page.locator('.toolbar '+selector)).toBeVisible();
+ for(const selector of ['[data-action=media]','[data-action=link]','[data-add=calendar]'])await expect(page.locator('.toolbar '+selector)).toBeVisible();
  const count=await page.locator('.block-table').count();await page.locator('[data-add=table]').click();
  await expect(page.getByRole('dialog',{name:'표 만들기'})).toBeVisible();await page.locator('[data-table-cancel]').click();await expect(page.locator('.block-table')).toHaveCount(count);
  await page.locator('[data-add=table]').click();await page.getByLabel('줄 수',{exact:true}).fill('100');await page.getByLabel('칸 수',{exact:true}).fill('30');await page.locator('#table-form [type=submit]').click();await expect(page.locator('#table-error')).toContainText('1,500');
@@ -860,8 +857,8 @@ test('object right-click menu preserves groups, fits viewport, dismisses and edi
  await page.locator('[data-id=a] > .edge-right').click();
  for(const selector of ['[data-prop=x]','[data-prop=w]','[data-prop=locked]','[data-block-action=duplicate]','[data-block-action=delete]'])await expect(page.locator('#selection-tools '+selector)).toHaveCount(0);
  await page.locator('[data-id=b] > .edge-right').click({modifiers:['Shift']});await page.locator('[data-id=a] > .edge-right').click({button:'right'});
- const menu=page.getByRole('menu',{name:'개체 컨텍스트 메뉴'});await expect(menu).toBeVisible();await page.locator('#viewport').evaluate(el=>el.dispatchEvent(new Event('scroll')));await expect(menu).toBeVisible();await expect(page.locator('.block.selected')).toHaveCount(2);await menu.locator('[data-block-action=align-left]').click();
- expect(await page.locator('[data-id=b]').evaluate(el=>parseFloat(el.style.left))).toBe(100);await page.keyboard.press('Escape');await expect(menu).toBeHidden();
+ const menu=page.getByRole('menu',{name:'개체 컨텍스트 메뉴'});await expect(menu).toBeVisible();await page.locator('#viewport').evaluate(el=>el.dispatchEvent(new Event('scroll')));await expect(menu).toBeVisible();await expect(page.locator('.block.selected')).toHaveCount(2);await expect(menu.locator('[data-block-action^=align-]')).toHaveCount(0);
+ expect(await page.locator('[data-id=b]').evaluate(el=>parseFloat(el.style.left))).toBe(500);await page.keyboard.press('Escape');await expect(menu).toBeHidden();
  await page.locator('[data-id=a] .editable').click();await page.locator('[data-id=a] > .edge-top').click({button:'right'});await menu.getByLabel('X',{exact:true}).fill('180');await menu.getByLabel('X',{exact:true}).press('Tab');expect(await page.locator('[data-id=a]').evaluate(el=>parseFloat(el.style.left))).toBe(180);
  const bounds=await menu.boundingBox();expect(bounds.x).toBeGreaterThanOrEqual(0);expect(bounds.y+bounds.height).toBeLessThanOrEqual(960);
  await menu.locator('[data-block-action=duplicate]').click();await expect(page.locator('.block')).toHaveCount(3);
@@ -907,4 +904,42 @@ test('multiline paste and empty Enter preserve neighboring checks while native t
  await page.evaluate(()=>{window.plainCopied=null;document.addEventListener('copy',e=>{window.plainCopied=e.clipboardData.getData('application/x-cotion-blocks');});});
  await caretInLine(editor,0,0);await page.keyboard.press('Control+a');await page.keyboard.press('Control+c');expect(await page.evaluate(()=>window.plainCopied)).toBe('');
  await page.locator('[data-add=text]').click();const target=page.locator('.block-text').last().locator('[data-edit]');await target.fill('');await page.keyboard.press('Control+v');await expect(target).toContainText('새 줄');await expect(target.locator('[data-line-check]')).toHaveCount(0);
+});
+
+test('calendar scales typography with both dimensions and positions dates at the top left',async({page})=>{
+ await seedInteractionBoard(page,[{id:'calendar-size',type:'calendar',x:40,y:40,w:340,h:280,month:'2026-10',events:{'2026-10-21':'예정된 일정'}}]);
+ const block=page.locator('[data-id=calendar-size]');await block.locator(':scope > .edge-right').click();
+ const day=block.locator('[data-calendar-date="2026-10-21"]'),font=()=>day.evaluate(el=>parseFloat(getComputedStyle(el).fontSize));const before=await font();
+ await editSetting(page,'w',680);await editSetting(page,'h',560);expect(await font()).toBeGreaterThan(before*1.5);
+ const offsets=await day.evaluate(el=>{const a=el.getBoundingClientRect(),b=el.querySelector('span').getBoundingClientRect();return {left:b.left-a.left,top:b.top-a.top,width:a.width,height:a.height};});expect(offsets.left).toBeLessThan(offsets.width*.3);expect(offsets.top).toBeLessThan(offsets.height*.3);
+ await editSetting(page,'h',240);expect(await font()).toBeLessThan(before*1.2);
+});
+test('wheel over a drawer header and media scrolls its own list without scrolling the board',async({page})=>{
+ const blocks=[{id:'drawer-wheel',type:'drawer',x:80,y:80,w:430,h:400,expanded:true},...Array.from({length:8},(_,i)=>({id:'member-'+i,type:'note',parentId:'drawer-wheel',x:0,y:0,w:290,h:180,text:'목록 '+i}))];
+ await seedInteractionBoard(page,blocks);const drawer=page.locator('[data-id=drawer-wheel]'),list=drawer.locator(':scope > .drawer-list');const board=await page.locator('#viewport').evaluate(el=>el.scrollTop);
+ await drawer.locator('.drawer-header').hover();await page.mouse.wheel(0,220);await expect.poll(()=>list.evaluate(el=>el.scrollTop)).toBeGreaterThan(100);expect(await page.locator('#viewport').evaluate(el=>el.scrollTop)).toBe(board);
+ const previous=await list.evaluate(el=>el.scrollTop);await list.hover();await page.mouse.wheel(0,150);await expect.poll(()=>list.evaluate(el=>el.scrollTop)).toBeGreaterThan(previous);
+});
+test('object page and web links navigate, preserve F2 editing, validate and remove through one dialog',async({page})=>{
+ await seedInteractionBoard(page,[{id:'linked',type:'note',x:100,y:100,w:300,h:200,text:'프로젝트 자료'}]);
+ await page.locator('.pagination [data-action=add-page]').click();await page.locator('#page-title').fill('연결 대상');await page.locator('#page-title').press('Tab');await page.locator('.pagination [aria-label="1페이지"]').click();
+ let block=page.locator('[data-id=linked]');await block.locator(':scope > .edge-right').click();await page.keyboard.press('Control+k');await page.locator('[name=kind]').selectOption('page');await page.locator('[name=target]').selectOption({label:'연결 대상'});await page.locator('#link-form [type=submit]').click();
+ await block.locator('[data-edit]').click();await expect(page.locator('#page-title')).toHaveValue('연결 대상');await page.locator('.pagination [aria-label="1페이지"]').click();
+ await block.locator(':scope > .edge-right').click();await page.keyboard.press('F2');await block.locator('[data-edit]').fill('수정한 연결 개체');await page.locator('.pagination [aria-label="2페이지"]').click();await page.locator('.pagination [aria-label="1페이지"]').click();await expect(block.locator('[data-edit]')).toHaveAttribute('contenteditable','false');
+ await block.locator(':scope > .edge-right').click();await openObjectMenu(page);await page.locator('[data-block-action=attach-link]').click();await page.locator('[name=kind]').selectOption('web');await page.locator('[name=url]').fill('javascript:alert(1)');await page.locator('#link-form [type=submit]').click();await expect(page.locator('#link-error')).toContainText('http');await page.locator('[name=url]').fill('example.com/project');await page.locator('#link-form [type=submit]').click();
+ await page.evaluate(()=>{window.linkOpened=[];window.open=(...args)=>{window.linkOpened.push(args);return null;};});await block.locator('[data-edit]').click();expect(await page.evaluate(()=>window.linkOpened[0][0])).toBe('https://example.com/project');
+ await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');await page.reload();await expect(block.locator('.object-link-badge')).toBeVisible();await block.locator(':scope > .edge-right').click();await openObjectMenu(page);await page.locator('[data-block-action=remove-link]').click();await expect(block.locator('.object-link-badge')).toHaveCount(0);await expect(block.locator('[data-edit]')).toHaveAttribute('contenteditable','true');await expect(block).toContainText('수정한 연결 개체');
+});
+test('right-click copy, paste and cut preserve linked objects and original file references',async({page})=>{
+ await seedInteractionBoard(page,[{id:'menu-file',type:'file',fileId:'approved-id',name:'원본.pdf',x:100,y:100,w:300,h:100,hyperlink:{kind:'web',url:'https://example.com/'}}]);
+ await page.evaluate(()=>{window.objectLinkOpened=[];window.originalOpened=[];window.open=url=>{window.objectLinkOpened.push(url);return null;};window.moaDesktop={openFile:async id=>window.originalOpened.push(id)};});await page.locator('[data-id=menu-file] .file-open').click();expect(await page.evaluate(()=>window.objectLinkOpened)).toEqual(['https://example.com/']);expect(await page.evaluate(()=>window.originalOpened)).toEqual([]);
+ await page.locator('[data-id=menu-file] > .edge-right').click({button:'right'});await page.locator('[data-block-action=copy]').click();await openObjectMenu(page);await page.locator('[data-block-action=paste-objects]').click();await expect(page.locator('.block-file')).toHaveCount(2);await expect(page.locator('.block-file.selected .file-open')).toHaveAttribute('data-file','approved-id');await expect(page.locator('.block-file.selected .object-link-badge')).toBeVisible();
+ await openObjectMenu(page);await page.locator('[data-block-action=cut]').click();await expect(page.locator('.block-file')).toHaveCount(1);await page.keyboard.press('Control+z');await expect(page.locator('.block-file')).toHaveCount(2);
+});
+
+
+test('new regular shapes preserve aspect in size fields and can opt into free proportions',async({page})=>{
+ await page.locator('[data-menu=shapes]').click();await page.locator('[data-add=triangle]').click();const block=page.locator('.block-triangle').last();expect(await block.evaluate(el=>[parseFloat(el.style.width),parseFloat(el.style.height)])).toEqual([200,200]);
+ await editSetting(page,'w',300);expect(await block.evaluate(el=>[parseFloat(el.style.width),parseFloat(el.style.height)])).toEqual([300,300]);await expect(block.locator('.shape-surface')).toHaveAttribute('preserveAspectRatio','xMidYMid meet');
+ await openObjectMenu(page);await page.locator('[data-prop=keepAspect]').uncheck();await editSetting(page,'w',360);expect(await block.evaluate(el=>[parseFloat(el.style.width),parseFloat(el.style.height)])).toEqual([360,300]);await expect(block.locator('.shape-surface')).toHaveAttribute('preserveAspectRatio','none');
 });

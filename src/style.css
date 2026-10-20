@@ -1844,3 +1844,26 @@ main {
 .table-insert-preview .header-cell { background: #e9eefb; }
 .table-preview-caption { text-align: center; color: #536785; }
 #table-error { color: #a23636; }
+
+/* Calendar typography follows both object dimensions, including live resize. */
+.block-calendar { container-type: size; padding: 8px; }
+.calendar-surface { font-size: clamp(8px,min(3cqw,3.5cqh),30px); display: flex; flex-direction: column; height: 100%; min-height: 0; line-height: 1.3; }
+.calendar-head { height: 2.5em; gap: .35em; }
+.calendar-head input[type=month] { font-size: 1.1em; width: 11em; }
+.calendar-head button { font-size: .9em; padding: .3em; }
+.calendar-head svg { width: 1.3em; height: 1.3em; }
+.calendar-week { font-size: .9em; margin-top: .5em; }
+.calendar-grid { margin-top: .5em; grid-template-rows: repeat(var(--calendar-weeks),minmax(0,1fr)); grid-auto-rows: minmax(0,1fr); }
+.calendar-day { align-items: flex-start; justify-content: flex-start; text-align: left; font-size: 1em; padding: .35em; gap: .25em; overflow: hidden; }
+.calendar-day small { font-size: .8em; text-align: left; }
+.calendar-day.today > span { padding: .05em .25em; }
+.drawer-list { overscroll-behavior: contain; }
+.drawer-entry { flex-shrink: 0; }
+.has-object-link > [data-edit][contenteditable=false], .has-object-link .shape-text[contenteditable=false] { cursor: pointer; }
+.object-link-badge { position: absolute; top: 8px; right: 8px; z-index: 4; padding: 3px; border-radius: 4px; background: #f0f3ff; color: #4357a5; }
+.object-link-badge svg { width: 14px; height: 14px; }
+.object-context-menu kbd { font: inherit; font-size: 10px; color: #65738b; margin-left: auto; }
+.insert-form [hidden] { display: none !important; }
+.file-connect-options { display: flex; flex-direction: column; gap: 18px; }
+.file-connect-options details { border-top: 1px solid #d8deeb; padding-top: 16px; }
+.file-connect-options summary { cursor: pointer; color: #536685; }
