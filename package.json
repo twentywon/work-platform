@@ -1,0 +1,42 @@
+{
+  "name": "work-platform",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test tests/*.test.js",
+    "test:e2e": "playwright test",
+    "desktop": "npm run build && electron .",
+    "test:desktop": "npm run build && node tests/desktop.smoke.js",
+    "package:win": "npm run build && electron-builder --win portable --x64",
+    "package:linux": "npm run build && electron-builder --linux dir --x64",
+    "package:mac": "npm run build && electron-builder --mac dmg",
+    "build:html": "vite build --config vite.html.config.js",
+    "test:html": "npm run build:html && playwright test --config playwright.html.config.js",
+    "package:html": "npm run build:html && node scripts/package-html.mjs"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "lucide": "^0.468.0",
+    "mammoth": "^1.9.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "electron": "^39.8.10",
+    "electron-builder": "^26.15.3",
+    "vite": "^7.1.0",
+    "vite-plugin-singlefile": "^2.3.4"
+  },
+  "main": "desktop/main.cjs",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "description": "내 컴퓨터의 원본 파일을 바로가기로 연결하는 개인 업무 공간",
+  "author": "Moa",
+  "license": "UNLICENSED",
+  "productName": "모아"
+}

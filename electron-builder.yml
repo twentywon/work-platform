@@ -1,0 +1,28 @@
+appId: kr.moa.workspace
+productName: 모아
+executableName: Moa
+asar: true
+directories:
+  output: release
+files:
+  - dist/**/*
+  - desktop/**/*
+  - package.json
+  - build/icon.png
+win:
+  target:
+    - target: portable
+      arch: [x64]
+  icon: build/icon.ico
+  signAndEditExecutable: false
+portable:
+  artifactName: Moa-${version}-Windows.exe
+  requestExecutionLevel: user
+linux:
+  target: dir
+  icon: build/icon.png
+  category: Office
+mac:
+  target: dmg
+  category: public.app-category.productivity
+  icon: build/icon.png
