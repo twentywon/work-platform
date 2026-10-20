@@ -7,7 +7,7 @@ const zip=new JSZip();
 const html=await readFile(path.join(root,'모아.html'));
 zip.file('모아.html',html);
 zip.file('모아 실행.cmd',await readFile(path.join(root,'windows/Start-Moa.cmd')));
-for(const name of ['Moa-Local.ps1','Moa-Worker.ps1','Moa-App.ps1','Moa-Sdk.ps1','Start-Moa.vbs'])zip.file(name,await readFile(path.join(root,'windows',name)));
+for(const name of ['Moa-Local.ps1','Moa-Worker.ps1','Moa-App.ps1','Moa-Display.ps1','Moa-Sdk.ps1','Start-Moa.vbs'])zip.file(name,await readFile(path.join(root,'windows',name)));
 zip.file('모아 실행.vbs',await readFile(path.join(root,'windows/Start-Moa.vbs')));
 async function addRuntime(relative){
  const absolute=path.join(root,'windows',relative);
@@ -16,7 +16,7 @@ async function addRuntime(relative){
  else zip.file(relative.split(path.sep).join('/'),await readFile(absolute));
 }
 await addRuntime('webview2');
-zip.file('사용방법.txt',`모아 v0.6.1 · Windows 10/11
+zip.file('사용방법.txt',`모아 v0.6.2 · Windows 10/11
 
 1. ZIP 전체를 압축 해제하세요. 이전 모아 창과 검은 연결 도우미 창은 먼저 닫으세요.
 2. 모아 실행.vbs를 더블클릭하세요. 검은 창 없이 모아 전용 HTML 창이 열립니다. 창을 닫으면 연결 도우미도 종료됩니다. EXE 빌드나 Node.js 설치는 필요하지 않습니다. 모아 실행.cmd도 같은 전용 창을 실행합니다.
@@ -25,6 +25,7 @@ zip.file('사용방법.txt',`모아 v0.6.1 · Windows 10/11
 4. 전용 창에 탐색기 파일을 끌어놓으면 원본 확인 창 없이 바로 연결합니다. 파일 연결 버튼으로도 등록할 수 있습니다. 카드 클릭은 등록한 원본을 Windows 기본 프로그램으로 엽니다. 원본 문서를 복사하거나 다운로드하지 않습니다. 폴더 연결은 필요하지 않습니다. 경로 붙여넣기도 가능합니다.
 5. 일반 Chrome·Edge와 HTML 직접 실행에서는 네이티브 드래그 경로를 받을 수 없습니다. 원본 연결과 확인 없는 드래그는 전용 창에서 사용하세요. 원본을 옮기거나 삭제하면 다시 연결해야 합니다.
 6. 기존 브라우저와 새 전용 창은 보드 저장 공간이 다릅니다! 새 창을 켜 둔 채 기존 Chrome·Edge에서 http://127.0.0.1:17843 을 여세요. 기존 보드의 백업·복원 → 현재 작업 백업 후 새 전용 창의 백업·복원 → 백업 파일 복원으로 옮깁니다. 복원은 현재 보드를 바꿉니다. 백업은 원본 문서를 복사하지 않고 보드와 연결 경로, 보드용 미디어 사본을 포함합니다.
+화면 선명도: Windows 모니터별 DPI 배율에 대응하고, 보드는 글자를 목표 배율로 다시 그리는 방식으로 확대합니다. 아래 1:1 버튼은 보드를 100%로 표시하며 배율 숫자를 누르면 가로폭 맞춤으로 돌아갑니다. Windows 125%·150% 및 모니터 이동의 실제 결과는 Windows PC에서 확인해야 합니다.
 7. 개체 테두리를 누르면 선택됩니다. 선택한 뒤 삭제·복제·이동·크기·회전을 사용할 수 있습니다.
 8. 도구모음의 서랍을 추가하고 화살표로 펼치세요. 개체 넣기로 기존 개체를 담거나 파일, 이미지·GIF·영상, 메모, 체크를 추가합니다. 파일을 펼친 서랍에 끌어놓아도 됩니다. 목록의 화살표로 순서 변경/보드로 꺼내기를 할 수 있습니다. 서랍 삭제 시 내용은 보드로 나옵니다.
 9. PDF는 실제 첫 페이지, HWP/HWPX는 저장 이미지/Windows 제공자, Office는 읽기 전용 첫 페이지 내보내기로 미리봅니다. Excel은 첫 시트의 첫 인쇄 페이지, PowerPoint는 첫 슬라이드입니다. 생성이 안 되면 이유와 가능한 텍스트·표를 표시합니다. 원본은 수정하지 않습니다.
@@ -51,7 +52,7 @@ await mkdir(path.dirname(out),{recursive:true});
 const buffer=await zip.generateAsync({type:'nodebuffer',compression:'DEFLATE',compressionOptions:{level:6}});
 await writeFile(out,buffer);
 const verified=await JSZip.loadAsync(await readFile(out),{checkCRC32:true});
-for(const required of ['모아.html','개발용소스/src/main.js','Moa-Worker.ps1','Moa-Local.ps1','Moa-App.ps1','Moa-Sdk.ps1','모아 실행.cmd','모아 실행.vbs','Start-Moa.vbs','webview2/Microsoft.Web.WebView2.Core.dll','webview2/Microsoft.Web.WebView2.WinForms.dll','webview2/x64/WebView2Loader.dll','webview2/x86/WebView2Loader.dll','webview2/LICENSE.txt','webview2/PROVENANCE.json'])if(!verified.file(required))throw Error('ZIP content missing: '+required);
+for(const required of ['모아.html','개발용소스/src/main.js','Moa-Worker.ps1','Moa-Local.ps1','Moa-App.ps1','Moa-Display.ps1','Moa-Sdk.ps1','모아 실행.cmd','모아 실행.vbs','Start-Moa.vbs','webview2/Microsoft.Web.WebView2.Core.dll','webview2/Microsoft.Web.WebView2.WinForms.dll','webview2/x64/WebView2Loader.dll','webview2/x86/WebView2Loader.dll','webview2/LICENSE.txt','webview2/PROVENANCE.json'])if(!verified.file(required))throw Error('ZIP content missing: '+required);
 const provenance=JSON.parse(await verified.file('webview2/PROVENANCE.json').async('string'));
 for(const [name,expected] of Object.entries(provenance.sha256))if(createHash('sha256').update(await verified.file('webview2/'+name).async('nodebuffer')).digest('hex')!==expected)throw Error('SDK hash mismatch: '+name);
 if(!Buffer.from(await verified.file('모아.html').async('uint8array')).equals(html))throw Error('HTML verification failed');

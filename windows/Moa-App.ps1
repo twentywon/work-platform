@@ -1,8 +1,6 @@
 ﻿# HTML workspace hosted by WebView2. File objects cross the native bridge with real paths.
 param([int]$Port = 17843)
 $ErrorActionPreference = 'Stop'
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
 $dataDirectory = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'MoaWeb'
 [void][IO.Directory]::CreateDirectory($dataDirectory)
 $baseUrl = "http://127.0.0.1:$Port/"
@@ -11,6 +9,13 @@ $script:helperToken = $null; $script:initialized = $false
 $mutex = New-Object Threading.Mutex($false,'Local\MoaWebViewWorkspace')
 $ownsMutex = $false
 try {
+    . (Join-Path $PSScriptRoot 'Moa-Display.ps1')
+    $dpiMode = [MoaDisplay]::Enable()
+    [AppContext]::SetSwitch('Switch.System.Windows.Forms.DoNotScaleForDpiChanges',$false)
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Drawing
+    [Windows.Forms.Application]::EnableVisualStyles()
+    [Windows.Forms.Application]::SetCompatibleTextRenderingDefault($false)
     $ownsMutex = $mutex.WaitOne(0,$false)
     if (-not $ownsMutex) { throw '모아가 이미 실행 중입니다. 작업 표시줄에서 모아 창을 확인하세요.' }
     $probe = New-Object Net.Sockets.TcpClient
@@ -46,6 +51,8 @@ public static class MoaProcessLog {
     $server = [Diagnostics.Process]::Start($start)
     [MoaProcessLog]::Attach($server,(Join-Path $dataDirectory 'helper.log'))
     $form = New-Object Windows.Forms.Form
+    $form.AutoScaleDimensions = New-Object Drawing.SizeF(96,96)
+    $form.AutoScaleMode = [Windows.Forms.AutoScaleMode]::Dpi
     $form.Text = '모아'; $form.Width = 1440; $form.Height = 960
     $form.MinimumSize = New-Object Drawing.Size(800,600)
     $form.StartPosition = [Windows.Forms.FormStartPosition]::CenterScreen

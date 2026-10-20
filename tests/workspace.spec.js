@@ -573,3 +573,40 @@ test('workspace backup restores media, drawer contents and text after replacemen
  await expect(page.locator('.in-drawer .editable')).toHaveText('옮겨온 보드');
  await expect.poll(()=>page.locator('.block-media img').evaluate(i=>i.complete&&i.naturalWidth>0)).toBe(true);
 });
+
+test('fractional display density keeps board width, zoom, editing and drag coordinates correct',async({page})=>{
+ const cdp=await page.context().newCDPSession(page);
+ const initial=await page.locator('#canvas').evaluate(el=>({width:el.style.width,height:el.style.height}));
+ try {
+  for(const density of [1.25,1.5,2]) {
+   await cdp.send('Emulation.setDeviceMetricsOverride',{width:1280,height:900,deviceScaleFactor:density,mobile:false});
+   await expect.poll(()=>page.evaluate(()=>window.devicePixelRatio)).toBe(density);
+   await page.locator('#zoom-value').click();
+   await expect.poll(()=>page.locator('#canvas').evaluate(el=>Math.abs(el.getBoundingClientRect().width-(document.querySelector('#viewport').clientWidth-24)))).toBeLessThan(2);
+   await page.locator('[data-add=note]').click();
+   const note=page.locator('.block-note').last();
+   await note.locator('.editable').fill(`선명한 글자 ${density}`);
+   await page.locator('[data-action=actual-size]').click();
+   await expect(page.locator('#zoom-value')).toHaveText('100%');
+   expect(await page.locator('#canvas').evaluate(el=>el.getBoundingClientRect().width)).toBeCloseTo(parseFloat(initial.width),0);
+   await page.locator('#zoom-value').click();
+   const zoom=await page.locator('#canvas').evaluate(el=>Number(getComputedStyle(el).zoom));
+   const before=await note.evaluate(el=>({x:parseFloat(el.style.left),y:parseFloat(el.style.top)}));
+   await note.locator('.drag-handle').scrollIntoViewIfNeeded();
+   const handle=await note.locator('.drag-handle').boundingBox();
+   await page.mouse.move(handle.x+8,handle.y+8);await page.mouse.down();
+   await page.mouse.move(handle.x+8+60*zoom,handle.y+8+40*zoom,{steps:5});await page.mouse.up();
+   const after=await note.evaluate(el=>({x:parseFloat(el.style.left),y:parseFloat(el.style.top)}));
+   expect(after.x-before.x).toBe(60);expect(after.y-before.y).toBe(40);
+   await expect(note.locator('.editable')).toHaveText(`선명한 글자 ${density}`);
+   expect(await page.locator('#canvas').evaluate(el=>({width:el.style.width,height:el.style.height}))).toEqual(initial);
+  }
+  // Readability of actual note text and toolbar labels, not just decorative colors.
+  const ratio=await page.locator('.block-note').last().evaluate(el=>{
+   const luminance=color=>{const rgb=color.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4});return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722};
+   const fg=luminance(getComputedStyle(el.querySelector('.editable')).color),bg=luminance(getComputedStyle(el).backgroundColor);
+   return (Math.max(fg,bg)+.05)/(Math.min(fg,bg)+.05);
+  });
+  expect(ratio).toBeGreaterThanOrEqual(4.5);
+ } finally {await cdp.send('Emulation.clearDeviceMetricsOverride');await cdp.detach();}
+});

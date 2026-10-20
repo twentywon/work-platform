@@ -1,11 +1,5 @@
 :root {
-  font-family:
-    Inter,
-    "Noto Sans KR",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
+  font-family: "Segoe UI", "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
   color: #303744;
   background: #f6f7fb;
   font-synthesis: none;
@@ -560,9 +554,6 @@ main {
 .canvas-space {
   position: relative;
   margin: 0 auto;
-  transition:
-    width 0.15s,
-    height 0.15s;
 }
 .canvas {
   position: relative;
@@ -570,7 +561,6 @@ main {
   box-shadow: 0 2px 15px #1c2c4810;
   border: 1px solid #e5e8ef;
   border-radius: 4px;
-  transform-origin: top left;
   overflow: hidden;
 }
 .canvas-footer {
@@ -1739,3 +1729,35 @@ main {
 .insert-form .drawer-choice { display: flex; align-items: center; gap: 10px; }
 .insert-form .drawer-choice input { width: 18px; height: 18px; flex-shrink: 0; }
 .block.contains-selected { z-index: 2; }
+
+/* Readable foregrounds; keep pastel board colors and native font antialiasing. */
+:root { --text-primary: #303c50; --text-secondary: #526078; --text-accent: #4658a5; }
+.editable { color: var(--text-primary); }
+.block-note .editable { color: #594b27; }
+.block-note:nth-child(5) .note-label,
+.block-note:nth-child(5) .editable { color: #47557b; }
+.shape-text { color: #315f4c; }
+.note-label { color: #6c5c2c; }
+.table-scroll td { color: var(--text-primary); }
+.table-scroll th { color: #43516b; }
+.toolbar, .toolbar button, .breadcrumb, .new-page, .page-item,
+.block-controls > span, .page-count, .pagination button, .zoom-tools,
+.drawer-header > span, .drawer-entry-tools, .drawer-empty,
+.media-caption, .board-link small, .calendar-week,
+.preview-source, .preview-info, .preview-caption,
+.tip-card p, .tip-card strong, .local-label, .side-label, .side-nav,
+.pages-header, .profile small, .top-actions > span, .workspace-switch small {
+  color: var(--text-secondary);
+}
+.toolbar button, .page-item, .new-page { font-weight: 500; }
+.connection-status, .drawer-add button, .drawer-entry-tools button,
+.drawer-header > button, .pagination .chosen, .side-nav.active { color: var(--text-accent); }
+.drawer-name, .board-link, .calendar-day { color: #3f506e; }
+.file-details strong { color: var(--text-primary); }
+.file-details small, .file-open > svg, .toolbar-right, .zoom-tools button, .zoom-tools #zoom-value { color: var(--text-secondary); }
+.file-details small { font-size: 11px; }
+.block.selected { border-color: #5267c8; box-shadow: 0 0 0 1px #5267c8; }
+.board-link, .block-file, .table-scroll { border-color: #b8c3d5; }
+.canvas { border-color: #cbd3e1; }
+.drawer-entry-tools, .drawer-add button, .media-caption, .note-label,
+.page-count, .connection-status { font-size: 11px; }
