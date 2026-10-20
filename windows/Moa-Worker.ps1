@@ -6,6 +6,7 @@ $directory = $utf8.GetString([Convert]::FromBase64String($ResultBase64))
 $source = if ($SourceBase64) { $utf8.GetString([Convert]::FromBase64String($SourceBase64)) } else { '' }
 [void][IO.Directory]::CreateDirectory($directory)
 $result = $null
+$settings = @{}
 $app = $null; $document = $null; $owner = $null; $dialog = $null
 try {
     if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { throw 'Windows PC에서 실행해야 하는 기능입니다.' }
@@ -29,6 +30,7 @@ try {
         $pdf = Join-Path $directory 'page.pdf'; $png = Join-Path $directory 'page.png'
         if ($extension -in @('.doc','.docx')) {
             $app = New-Object -ComObject Word.Application
+            $settings['AutomationSecurity'] = $app.AutomationSecurity; $settings['DisplayAlerts'] = $app.DisplayAlerts; $settings['Visible'] = $app.Visible
             $app.Visible = $false; $app.DisplayAlerts = 0; $app.AutomationSecurity = 3
             $document = $app.Documents.Open($source, $false, $true, $false)
             # wdExportFormatPDF=17, wdExportFromTo=3; export page 1 only.
@@ -36,6 +38,7 @@ try {
             $result = @{ ok = $true; format = 'pdf'; source = 'Word 첫 페이지' }
         } elseif ($extension -in @('.xls','.xlsx')) {
             $app = New-Object -ComObject Excel.Application
+            $settings['AutomationSecurity'] = $app.AutomationSecurity; $settings['DisplayAlerts'] = $app.DisplayAlerts; $settings['Visible'] = $app.Visible; $settings['EnableEvents'] = $app.EnableEvents; $settings['AskToUpdateLinks'] = $app.AskToUpdateLinks
             $app.Visible = $false; $app.DisplayAlerts = $false; $app.EnableEvents = $false
             $app.AskToUpdateLinks = $false; $app.AutomationSecurity = 3
             $document = $app.Workbooks.Open($source,0,$true)
@@ -45,6 +48,7 @@ try {
             $result = @{ ok = $true; format = 'pdf'; source = 'Excel 첫 시트의 첫 인쇄 페이지' }
         } elseif ($extension -in @('.ppt','.pptx')) {
             $app = New-Object -ComObject PowerPoint.Application
+            $settings['AutomationSecurity'] = $app.AutomationSecurity; $settings['DisplayAlerts'] = $app.DisplayAlerts
             $app.AutomationSecurity = 3; $app.DisplayAlerts = 1
             $document = $app.Presentations.Open($source,-1,0,0)
             $slide = $document.Slides.Item(1)
@@ -96,6 +100,9 @@ finally {
         try {
             $count = if ($extension -in @('.doc','.docx')) { $app.Documents.Count } elseif ($extension -in @('.xls','.xlsx')) { $app.Workbooks.Count } else { $app.Presentations.Count }
             if ($count -eq 0) { $app.Quit() }
+            else {
+                foreach ($key in $settings.Keys) { try { $app.$key = $settings[$key] } catch {} }
+            }
         } catch {}
         try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($app) } catch {}
     }
