@@ -4,22 +4,23 @@ $ErrorActionPreference = 'Stop'
 $dataDirectory = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'MoaWeb'
 [void][IO.Directory]::CreateDirectory($dataDirectory)
 $baseUrl = "http://127.0.0.1:$Port/"
-$form = $null; $view = $null; $server = $null; $timer = $null
+$form = $null; $view = $null; $server = $null; $timer = $null; $appIcon = $null
 $script:helperToken = $null; $script:initialized = $false
 $mutex = New-Object Threading.Mutex($false,'Local\MoaWebViewWorkspace')
 $ownsMutex = $false
 try {
     . (Join-Path $PSScriptRoot 'Moa-Display.ps1')
     $dpiMode = [MoaDisplay]::Enable()
+    [void][MoaDisplay]::SetIdentity()
     [AppContext]::SetSwitch('Switch.System.Windows.Forms.DoNotScaleForDpiChanges',$false)
     Add-Type -AssemblyName System.Windows.Forms
     Add-Type -AssemblyName System.Drawing
     [Windows.Forms.Application]::EnableVisualStyles()
     [Windows.Forms.Application]::SetCompatibleTextRenderingDefault($false)
     $ownsMutex = $mutex.WaitOne(0,$false)
-    if (-not $ownsMutex) { throw '모아가 이미 실행 중입니다. 작업 표시줄에서 모아 창을 확인하세요.' }
+    if (-not $ownsMutex) { throw '코션이 이미 실행 중입니다. 작업 표시줄에서 코션 창을 확인하세요.' }
     $probe = New-Object Net.Sockets.TcpClient
-    try { $probe.Connect('127.0.0.1',$Port); throw '이전 모아 연결 도우미가 실행 중입니다. 이전 검은 창 또는 모아 창을 닫고 다시 실행하세요.' }
+    try { $probe.Connect('127.0.0.1',$Port); throw '이전 코션 연결 도우미가 실행 중입니다. 이전 검은 창 또는 코션 창을 닫고 다시 실행하세요.' }
     catch [Net.Sockets.SocketException] {} finally { $probe.Dispose() }
     $sdk = Join-Path $PSScriptRoot 'webview2'
     . (Join-Path $PSScriptRoot 'Moa-Sdk.ps1')
@@ -53,7 +54,9 @@ public static class MoaProcessLog {
     $form = New-Object Windows.Forms.Form
     $form.AutoScaleDimensions = New-Object Drawing.SizeF(96,96)
     $form.AutoScaleMode = [Windows.Forms.AutoScaleMode]::Dpi
-    $form.Text = '모아'; $form.Width = 1440; $form.Height = 960
+    $appIcon = New-Object Drawing.Icon -ArgumentList (Join-Path $PSScriptRoot 'assets/cotion.ico')
+    $form.Icon = $appIcon; $form.ShowIcon = $true; $form.ShowInTaskbar = $true
+    $form.Text = '코션'; $form.Width = 1440; $form.Height = 960
     $form.MinimumSize = New-Object Drawing.Size(800,600)
     $form.StartPosition = [Windows.Forms.FormStartPosition]::CenterScreen
     $view = New-Object Microsoft.Web.WebView2.WinForms.WebView2
@@ -69,6 +72,7 @@ public static class MoaProcessLog {
             if (-not $eventArgs.IsSuccess) { throw $eventArgs.InitializationException }
             $core = $view.CoreWebView2
             $core.Settings.AreDevToolsEnabled = $false
+            $core.Settings.AreBrowserAcceleratorKeysEnabled = $false
             $core.add_NavigationStarting({
                 param($s,$event)
                 if ($event.Uri -ne $baseUrl -and -not $event.Uri.StartsWith('blob:')) {
@@ -105,7 +109,7 @@ public static class MoaProcessLog {
                 }
             })
             $view.CoreWebView2.Navigate($baseUrl)
-        } catch { [void][Windows.Forms.MessageBox]::Show($_.Exception.Message,'모아 실행 오류'); $form.Close() }
+        } catch { [void][Windows.Forms.MessageBox]::Show($_.Exception.Message,'코션 실행 오류'); $form.Close() }
     })
     $timer = New-Object Windows.Forms.Timer
     $timer.Interval = 100
@@ -123,11 +127,11 @@ public static class MoaProcessLog {
                     if ([datetime]::UtcNow -gt $script:startupDeadline) { throw '연결 도우미를 시작하지 못했습니다.' }
                 } finally { $probe.Dispose() }
             }
-        } catch { $timer.Stop(); [void][Windows.Forms.MessageBox]::Show($_.Exception.Message,'모아 오류'); $form.Close() }
+        } catch { $timer.Stop(); [void][Windows.Forms.MessageBox]::Show($_.Exception.Message,'코션 오류'); $form.Close() }
     })
     $timer.Start()
     [Windows.Forms.Application]::Run($form)
-} catch { [void][Windows.Forms.MessageBox]::Show($_.Exception.Message,'모아 실행 오류') }
+} catch { [void][Windows.Forms.MessageBox]::Show($_.Exception.Message,'코션 실행 오류') }
 finally {
     if ($timer) { $timer.Stop(); $timer.Dispose() }
     if ($view) { $view.Dispose() }
@@ -149,5 +153,6 @@ finally {
         $server.Dispose()
     }
     if ($form) { $form.Dispose() }
+    if ($appIcon) { $appIcon.Dispose() }
     if ($ownsMutex) { $mutex.ReleaseMutex() }; $mutex.Dispose()
 }

@@ -1,5 +1,7 @@
+import {shapes} from './shapes.js';
 export const blockNames = {
   drawer: '서랍', text: '텍스트', note: '메모', table: '표', rect: '사각형', circle: '원',
+  ...Object.fromEntries(Object.entries(shapes).map(([key,s])=>[key,s.name])),
   hline: '가로 구분선', vline: '세로 구분선', file: '파일', checkbox: '체크박스',
   media: '이미지·영상·GIF', web: '인터넷 링크', pagelink: '페이지 링크', calendar: '달력',
 };

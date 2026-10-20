@@ -1,3 +1,4 @@
+import {isShape} from './shapes.js';
 export const uid = () => globalThis.crypto.randomUUID();
 export function makePage(index, width = 1160, height = 760) {
   return { id: uid(), title: `새 페이지 ${index}`, width, height, blocks: [] };
@@ -19,7 +20,7 @@ export function makeBlock(type, x = 60, y = 210, extra = {}) {
     pagelink: [300, 80],
     calendar: [440, 420],
   };
-  const [w, h] = sizes[type] || [290, 190];
+  const [w, h] = sizes[type] || (isShape(type)?[240,180]:[290, 190]);
   return {
     id: uid(),
     type,
@@ -103,11 +104,11 @@ export function rotatedBounds(b) {
  const h=Math.abs(b.w*Math.sin(angle))+Math.abs(b.h*Math.cos(angle));
  return {left:b.x+(b.w-w)/2,top:b.y+(b.h-h)/2,right:b.x+(b.w+w)/2,bottom:b.y+(b.h+h)/2};
 }
-export function groupDelta(blocks,page,dx,dy) {
+export function groupDelta(blocks,page,dx,dy,snapToGrid=true) {
  const bounds=blocks.map(rotatedBounds);
  return {
-  x:Math.max(-Math.min(...bounds.map(r=>r.left)),Math.min(snap(dx),page.width-Math.max(...bounds.map(r=>r.right)))),
-  y:Math.max(-Math.min(...bounds.map(r=>r.top)),Math.min(snap(dy),page.height-Math.max(...bounds.map(r=>r.bottom)))),
+  x:Math.max(-Math.min(...bounds.map(r=>r.left)),Math.min(snapToGrid?snap(dx):dx,page.width-Math.max(...bounds.map(r=>r.right)))),
+  y:Math.max(-Math.min(...bounds.map(r=>r.top)),Math.min(snapToGrid?snap(dy):dy,page.height-Math.max(...bounds.map(r=>r.bottom)))),
  };
 }
 export function duplicateBlock(page,id) {
@@ -118,3 +119,6 @@ export function duplicateBlock(page,id) {
   if(block.type==='drawer') for(const child of drawerChildren(page,id))page.blocks.push({...structuredClone(child),id:uid(),parentId:copy.id});
   return copy;
 }
+
+// Rotation changes only the angle. The layout anchor, center and size remain fixed.
+export function rotateBlock(block,angle) {block.rotation=Number.isFinite(Number(angle))?Number(angle)%360:0;return block;}

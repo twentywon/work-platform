@@ -37,7 +37,7 @@ try {
   assert.equal((await request('preview-start',{id:original})).status,400);
   assert.equal((await request('paths',{paths:['relative.txt']})).status,400);
   const status=await(await request('status')).json();
-  assert.equal(status.version,'0.7.0');assert.equal(status.folderCount,0);
+  assert.equal(status.version,'0.8.0');assert.equal(status.folderCount,0);
   const direct=await(await request('paths',{paths:['"'+original+'"']})).json();
   assert.equal(direct.files[0].id,'approved-file');assert.equal(direct.files[0].path,original);
   await writeFile(original,'수정된 원본의 최신 내용');
@@ -77,6 +77,7 @@ try {
   let pickerRequests=0;
   page.on('request',r=>{if(r.url().endsWith('/api/select-start'))pickerRequests++});
   await page.goto(origin);await page.locator('#canvas').waitFor();
+  await page.evaluate(()=>document.fonts.ready);assert.ok(await page.evaluate(()=>[...document.fonts].some(f=>f.family.includes('Cotion Title Serif')&&f.status==='loaded')));
   assert.equal(await page.locator('[data-action=link-folder]').count(),0);
   await page.locator('#file-input').setInputFiles(original);
   const card=page.locator('.file-open').filter({hasText:'원본 문서.txt'});await card.waitFor();

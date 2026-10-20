@@ -13,13 +13,13 @@ try {
     if ($Kind -eq 'select') {
         Add-Type -AssemblyName System.Windows.Forms
         $owner = New-Object System.Windows.Forms.Form
-        $owner.Text = '모아 원본 파일 선택'
+        $owner.Text = '코션 원본 파일 선택'
         $owner.Size = New-Object System.Drawing.Size(1,1)
         $owner.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
         $owner.ShowInTaskbar = $false; $owner.TopMost = $true; $owner.Opacity = 0
         $owner.Show(); $owner.Activate(); $owner.BringToFront()
         $dialog = New-Object System.Windows.Forms.OpenFileDialog
-        $dialog.Title = '모아 - 바로가기로 연결할 원본 파일 선택 (폴더 지정 불필요)'
+        $dialog.Title = '코션 - 바로가기로 연결할 원본 파일 선택 (폴더 지정 불필요)'
         $dialog.Multiselect = $true; $dialog.RestoreDirectory = $true
         $dialog.Filter = '업무 문서 및 이미지|*.hwp;*.hwpx;*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx;*.pdf;*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp;*.svg;*.txt;*.md;*.csv;*.json;*.log;*.odt;*.ods;*.odp'
         $files = @()

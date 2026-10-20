@@ -466,7 +466,7 @@ test('native selection shows waiting, cancellation and persistent connection err
   await page.evaluate(()=>window.moaDesktop.pickFiles=async()=>{throw Error('도우미 연결 오류: 테스트')});
   await page.locator('.toolbar [data-action=register]').click();
   await expect(page.locator('#connection-detail')).toContainText('도우미 연결 오류: 테스트');
-  await expect(page.locator('.modal')).toContainText('모아 실행.vbs');
+  await expect(page.locator('.modal')).toContainText('코션 실행.vbs');
   expect(await page.evaluate(()=>window.pickCount)).toBe(1);
 });
 test('browser-only path button explains how to activate original shortcuts', async ({page}) => {
@@ -561,7 +561,7 @@ test('workspace backup restores media, drawer contents and text after replacemen
  await page.locator('.in-drawer .editable').fill('옮겨온 보드');
  await page.locator('[data-action=backup-menu]').click();
  const backup=await downloadTextFile(page,page.locator('#export-backup'));
- expect(backup.filename).toBe('Moa-workspace-backup.json');
+ expect(backup.filename).toBe('Cotion-workspace-backup.json');
  await page.locator('#close-modal').click();
  await page.locator('[data-add=checkbox]').click();
  await page.locator('#backup-input').setInputFiles({name:'restore.json',mimeType:'application/json',buffer:Buffer.from(backup.text)});
@@ -739,4 +739,82 @@ test('untrusted formatting values cannot create HTML attributes in the settings 
  expect(await page.evaluate(()=>window.formatInjected)).toBeUndefined();
  await expect(page.locator('#selection-tools [onfocus]')).toHaveCount(0);
  await expect(page.locator('[data-prop="text:size"]')).toHaveValue('8');await expect(page.locator('#rotation-angle')).toHaveValue('0');
+});
+
+test('Cotion serif branding, actual heading alignment and multiline frames persist',async({page})=>{
+ await seedInteractionBoard(page,[{id:'heading',type:'text',role:'heading',x:80,y:80,w:500,h:300,text:'정렬 확인'},{id:'plain',type:'text',x:650,y:80,w:260,h:260,text:'initial'}]);
+ await expect(page.locator('.brand-wordmark')).toHaveText('코션');await expect(page.locator('.brand-wordmark')).toHaveCSS('font-family',/Cotion Title Serif/);
+ await page.evaluate(()=>document.fonts.ready);expect(await page.evaluate(()=>[...document.fonts].some(f=>f.family.includes('Cotion Title Serif')&&f.status==='loaded'))).toBe(true);
+ await expect(page).toHaveTitle(/코션/);await expect(page.getByRole('button',{name:'서식 초기화',exact:true})).toHaveCount(0);
+ await page.locator('[data-id=heading] > .edge-top').click();
+ const rangeX=()=>page.locator('[data-id=heading] .editable').evaluate(el=>{const r=document.createRange();r.selectNodeContents(el);return r.getBoundingClientRect().x});
+ const positions=[];for(const align of ['left','center','right']){await page.locator('[data-prop="text:align"]').selectOption(align);positions.push(await rangeX());}
+ expect(positions[1]-positions[0]).toBeGreaterThan(100);expect(positions[2]-positions[1]).toBeGreaterThan(100);
+ const heading=page.locator('[data-id=heading] .editable');await heading.fill('첫 번째 줄\n두 번째 줄\n세 번째 줄\n네 번째 줄');
+ expect(await heading.evaluate(el=>el.clientHeight)).toBeGreaterThan(200);
+ expect(await heading.evaluate(el=>el.scrollHeight-el.clientHeight)).toBeLessThanOrEqual(2);
+ const plain=page.locator('[data-id=plain] .editable');await plain.fill('A'.repeat(140));
+ expect(await plain.evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(2);expect(await plain.evaluate(el=>{const r=document.createRange();r.selectNodeContents(el);return r.getBoundingClientRect().height})).toBeGreaterThan(60);
+ await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');await page.reload();await expect(heading).toHaveText('첫 번째 줄\n두 번째 줄\n세 번째 줄\n네 번째 줄');await expect(heading).toHaveCSS('text-align','right');
+});
+test('rotation fields, quarter turns and handles never change stored position or size',async({page})=>{
+ await seedInteractionBoard(page,[{id:'rot',type:'rect',x:0,y:0,w:600,h:120}]);
+ await page.locator('[data-id=rot] > .edge-bottom').click();
+ const geometry=()=>page.locator('[data-id=rot]').evaluate(el=>[el.style.left,el.style.top,el.style.width,el.style.height]);const original=await geometry();
+ await page.locator('#rotation-angle').fill('90');await page.locator('#rotation-angle').press('Tab');expect(await geometry()).toEqual(original);
+ await page.locator('[data-block-action=rotate]').click();expect(await geometry()).toEqual(original);
+ await page.locator('#rotation-angle').fill('0');await page.locator('#rotation-angle').press('Tab');
+ // Bring the handle inside the viewport without changing rotation semantics.
+ await editSetting(page,'x',250);await editSetting(page,'y',200);const moved=await geometry();
+ const box=await page.locator('[data-id=rot]').boundingBox(),handle=await page.locator('[data-id=rot] > .rotate-handle').boundingBox();
+ const center={x:box.x+box.width/2,y:box.y+box.height/2},start={x:handle.x+12,y:handle.y+12},dx=start.x-center.x,dy=start.y-center.y;
+ await page.mouse.move(start.x,start.y);await page.mouse.down();await page.mouse.move(center.x+dx*Math.SQRT1_2-dy*Math.SQRT1_2,center.y+dx*Math.SQRT1_2+dy*Math.SQRT1_2,{steps:8});await page.mouse.up();
+ expect(await geometry()).toEqual(moved);await expect(page.locator('#rotation-angle')).toHaveValue('45');
+ await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');await page.reload();expect(await geometry()).toEqual(moved);
+});
+test('all additional shapes have editable vector surfaces and survive reload',async({page})=>{
+ await seedInteractionBoard(page,[]);
+ for(const type of ['rounded','triangle','diamond','pentagon','hexagon','star','arrow','parallelogram','speech','heart']) {
+  await page.locator('[data-menu=shapes]').click();await page.locator(`[data-add=${type}]`).click();
+  const shape=page.locator(`.block-${type}`);await expect(shape.locator('.shape-surface')).toBeVisible();await shape.locator('.editable').fill(type+' label');
+ }
+ await expect(page.locator('.block-shape')).toHaveCount(10);
+ await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');await page.reload();await expect(page.locator('.block-shape')).toHaveCount(10);await expect(page.locator('.block-heart .editable')).toHaveText('heart label');
+});
+test('Windows edit shortcuts format, nudge, save and undo/redo without losing content',async({page})=>{
+ await seedInteractionBoard(page,[{id:'t',type:'text',x:100,y:100,w:400,h:180,text:'abc'}]);
+ await page.locator('[data-id=t] > .edge-left').click();await page.locator('#canvas').focus();
+ await page.keyboard.press('ArrowRight');await page.keyboard.press('Shift+ArrowDown');
+ expect(await page.locator('[data-id=t]').evaluate(el=>[parseFloat(el.style.left),parseFloat(el.style.top)])).toEqual([101,110]);
+ await page.keyboard.press('Control+d');await expect(page.locator('.block-text')).toHaveCount(2);
+ await page.keyboard.press('Control+z');await expect(page.locator('.block-text')).toHaveCount(1);await page.keyboard.press('Control+y');await expect(page.locator('.block-text')).toHaveCount(2);
+ await page.keyboard.press('F2');const editor=page.locator('.block.selected .editable');await expect(editor).toBeFocused();
+ await page.keyboard.press('Control+b');await expect(editor).toHaveCSS('font-weight','700');await expect(editor).toBeFocused();
+ await page.keyboard.press('Control+i');await expect(editor).toHaveCSS('font-style','italic');await page.keyboard.press('Control+u');await expect(editor).toHaveCSS('text-decoration-line','underline');
+ await page.keyboard.press('Control+e');await expect(editor).toHaveCSS('text-align','center');
+ await page.keyboard.press('Control+z');await expect(editor).not.toHaveCSS('text-align','center');await page.keyboard.press('Control+Shift+z');await expect(editor).toHaveCSS('text-align','center');
+ let downloads=0;page.on('download',()=>downloads++);await page.keyboard.press('Control+s');await expect(page.locator('#toast')).toContainText('저장했습니다');expect(downloads).toBe(0);
+ await page.reload();await expect(page.locator('.block-text')).toHaveCount(2);
+});
+test('single object alignment uses the board while multiple alignment uses selected objects',async({page})=>{
+ await seedInteractionBoard(page,[{id:'a',type:'note',x:100,y:100,w:200,h:150},{id:'b',type:'note',x:500,y:100,w:200,h:150}]);
+ await page.locator('[data-id=a] > .edge-bottom').click();await page.locator('[data-prop=objectAlign]').selectOption('center-x');
+ expect(await page.locator('[data-id=a]').evaluate(el=>parseFloat(el.style.left))).toBe(480);
+ await page.locator('[data-prop=objectAlign]').selectOption('left');expect(await page.locator('[data-id=a]').evaluate(el=>parseFloat(el.style.left))).toBe(0);
+ await page.locator('[data-prop=objectAlign]').selectOption('right');expect(await page.locator('[data-id=a]').evaluate(el=>parseFloat(el.style.left))).toBe(960);
+ await page.locator('[data-id=b] > .edge-bottom').click({modifiers:['Shift']});await page.locator('[data-block-action=align-left]').click();
+ expect(await page.locator('[data-id=a]').evaluate(el=>parseFloat(el.style.left))).toBe(500);
+});
+test('object keyboard copy/cut/paste preserves drawer references across pages',async({page})=>{
+ await seedInteractionBoard(page,[{id:'d',type:'drawer',x:100,y:100,w:380,h:60},{id:'child',parentId:'d',type:'file',x:0,y:0,w:290,h:86,fileId:'native-file',name:'original.hwp'}]);
+ await page.locator('[data-id=d] > .edge-bottom').click();await page.locator('#canvas').focus();
+ // Record the platform clipboard boundary; the actual keyboard invokes the app's copy handler.
+ await page.evaluate(()=>{window.copiedClipboard=null;document.addEventListener('copy',e=>{window.copiedClipboard={custom:e.clipboardData.getData('application/x-cotion-blocks'),text:e.clipboardData.getData('text/plain')}},false)});
+ await page.keyboard.press('Control+c');
+ await expect.poll(()=>page.evaluate(()=>window.copiedClipboard?.custom||'')).not.toBe('');
+ await page.keyboard.press('Control+n');
+ await page.keyboard.press('Control+v');
+ await expect(page.locator('.block-drawer')).toHaveCount(1);await page.locator('[data-drawer-toggle]').click();await expect(page.locator('.drawer-entry .file-open')).toHaveAttribute('data-file','native-file');
+ await page.locator('.block-drawer > .edge-right').click();await page.locator('#canvas').focus();await page.keyboard.press('Control+x');await expect(page.locator('.block-drawer')).toHaveCount(0);
+ await page.keyboard.press('Control+z');await expect(page.locator('.block-drawer')).toHaveCount(1);
 });

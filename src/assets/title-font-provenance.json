@@ -1,0 +1,10 @@
+{
+  "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/notoserifkr/NotoSerifKR%5Bwght%5D.ttf",
+  "source_sha256": "11f8d5de6f1b79195efba3828aaa2ec95c1178f5ae976fb23c8d53250a9938f3",
+  "subset_sha256": "a0d257d62f115ba693540086f21e37259f3206db9097b019f98062a253d52b14",
+  "text": "코션",
+  "weight": 500,
+  "family": "Cotion Title Serif",
+  "license": "SIL Open Font License 1.1; see OFL-NotoSerifKR.txt",
+  "regenerate": "python scripts/make-title-font.py /path/to/NotoSerifKR.ttf"
+}

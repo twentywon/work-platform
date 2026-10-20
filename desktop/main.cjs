@@ -6,6 +6,7 @@ const { createRegistry } = require("./registry.cjs");
 let win;
 const dataDir = app.commandLine.getSwitchValue("user-data-dir");
 if (dataDir) app.setPath("userData", path.resolve(dataDir));
+else { const legacyProfile=path.join(app.getPath("appData"),"모아"); if(require("node:fs").existsSync(legacyProfile))app.setPath("userData",legacyProfile); } // Preserve an existing pre-rename profile.
 const primaryInstance = app.requestSingleInstanceLock();
 if (!primaryInstance) app.quit();
 app.on("second-instance", () => {
@@ -34,7 +35,7 @@ if (primaryInstance)
       ipcMain.handle("moa:pick", async (event) => {
         check(event);
         const result = await dialog.showOpenDialog(win, {
-          title: "모아에 연결할 파일 선택",
+          title: "코션에 연결할 파일 선택",
           properties: ["openFile", "multiSelections"],
           filters: [
             {
@@ -108,7 +109,7 @@ if (primaryInstance)
           height: 980,
           minWidth: 760,
           minHeight: 680,
-          title: "모아 — 나의 업무 공간",
+          title: "코션 — 나의 업무 공간",
           icon: path.join(__dirname, "../build/icon.png"),
           backgroundColor: "#f6f7fb",
           autoHideMenuBar: true,
@@ -134,7 +135,7 @@ if (primaryInstance)
               responseHeaders: {
                 ...details.responseHeaders,
                 "Content-Security-Policy": [
-                  "default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; frame-src 'self' blob:; connect-src 'self' blob:; object-src 'none'",
+                  "default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' blob: data:; img-src 'self' blob: data:; frame-src 'self' blob:; connect-src 'self' blob:; object-src 'none'",
                 ],
               },
             }),
@@ -147,7 +148,7 @@ if (primaryInstance)
       });
     })
     .catch((error) => {
-      console.error("모아를 실행하지 못했습니다:", error.message);
+      console.error("코션을 실행하지 못했습니다:", error.message);
       app.quit();
     });
 app.on("window-all-closed", () => {

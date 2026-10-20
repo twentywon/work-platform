@@ -15,7 +15,7 @@ export async function makeBackup(state,files) {
   return {format:'moa-workspace',version:1,state:structuredClone(state),files:result};
 }
 export function readBackup(data) {
-  if(data?.format!=='moa-workspace'||data.version!==1||!Array.isArray(data.state?.pages)||!data.state.pages.length||!Array.isArray(data.files))throw Error('모아 작업 백업 파일이 아닙니다.');
+  if(data?.format!=='moa-workspace'||data.version!==1||!Array.isArray(data.state?.pages)||!data.state.pages.length||!Array.isArray(data.files))throw Error('코션 작업 백업 파일이 아닙니다.');
   const state=structuredClone(data.state),seen=new Set();
   for(const page of state.pages) {
     if(!id(page.id)||seen.has(page.id)||!Array.isArray(page.blocks)||!Number.isFinite(page.width)||!Number.isFinite(page.height)||page.width<600||page.width>7680||page.height<400||page.height>4320)throw Error('페이지 데이터가 올바르지 않습니다.');

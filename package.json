@@ -1,6 +1,6 @@
 {
   "name": "work-platform",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -41,5 +41,5 @@
   "description": "내 컴퓨터의 원본 파일을 바로가기로 연결하는 개인 업무 공간",
   "author": "Moa",
   "license": "UNLICENSED",
-  "productName": "모아"
+  "productName": "코션"
 }

@@ -3,6 +3,13 @@ Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 public static class MoaDisplay {
+    [DllImport("shell32.dll", CharSet=CharSet.Unicode, ExactSpelling=true)]
+    static extern int SetCurrentProcessExplicitAppUserModelID(string appId);
+    public static bool SetIdentity() {
+        try { return SetCurrentProcessExplicitAppUserModelID("Cotion.Workspace")==0; }
+        catch (EntryPointNotFoundException) { return false; }
+        catch (DllNotFoundException) { return false; }
+    }
     [DllImport("user32.dll", SetLastError=true)]
     static extern bool SetProcessDpiAwarenessContext(IntPtr context);
     [DllImport("user32.dll", SetLastError=true)]

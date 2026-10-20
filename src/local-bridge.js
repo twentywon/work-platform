@@ -11,15 +11,15 @@ if (window.moaLocal && !window.moaDesktop) {
         body: JSON.stringify(body || {}),
       });
       if (!response.ok) {
-        if (['status', 'paths', 'folder-path', 'select-start', 'preview-start'].includes(route) && response.status === 404) throw new Error('이전 버전 연결 도우미가 실행 중입니다. 기존 도우미 창을 닫고 최신 ZIP의 모아 실행.vbs를 실행한 뒤 새로고침해 주세요.');
-        let message = '연결 도우미에 접근할 수 없습니다. 모아 실행.vbs를 다시 실행해 주세요.';
+        if (['status', 'paths', 'folder-path', 'select-start', 'preview-start'].includes(route) && response.status === 404) throw new Error('이전 버전 연결 도우미가 실행 중입니다. 기존 도우미 창을 닫고 최신 ZIP의 코션 실행.vbs를 실행한 뒤 새로고침해 주세요.');
+        let message = '연결 도우미에 접근할 수 없습니다. 코션 실행.vbs를 다시 실행해 주세요.';
         try { message = (await response.json()).error || message; } catch {}
         throw new Error(message);
       }
       return response;
     } catch (error) {
-      if (error.name === 'AbortError') throw new Error('연결 도우미가 응답하지 않습니다. 열린 파일·폴더 선택 창을 확인하고, 도우미 창이 닫혔다면 모아 실행.vbs를 다시 실행한 뒤 브라우저를 새로고침하세요.');
-      if (error instanceof TypeError) throw new Error('PC 연결 도우미와 연결이 끊겼습니다. 모아 실행.vbs를 다시 실행한 뒤 이 화면을 새로고침해 주세요.');
+      if (error.name === 'AbortError') throw new Error('연결 도우미가 응답하지 않습니다. 열린 파일·폴더 선택 창을 확인하고, 도우미 창이 닫혔다면 코션 실행.vbs를 다시 실행한 뒤 브라우저를 새로고침하세요.');
+      if (error instanceof TypeError) throw new Error('PC 연결 도우미와 연결이 끊겼습니다. 코션 실행.vbs를 다시 실행한 뒤 이 화면을 새로고침해 주세요.');
       throw error;
     } finally { clearTimeout(timer); }
   };
@@ -59,7 +59,7 @@ if (window.moaLocal && !window.moaDesktop) {
   }
   const nativePaths = files => new Promise((resolve,reject) => {
     const id = crypto.randomUUID();
-    const timer = setTimeout(() => { nativeRequests.delete(id); reject(Error('Windows 원본 경로 응답이 없습니다. 모아 전용 창을 다시 실행하세요.')); },8000);
+    const timer = setTimeout(() => { nativeRequests.delete(id); reject(Error('Windows 원본 경로 응답이 없습니다. 코션 전용 창을 다시 실행하세요.')); },8000);
     nativeRequests.set(id,{resolve,reject,timer});
     try { window.chrome.webview.postMessageWithAdditionalObjects({kind:'file-paths',id},files); }
     catch(error) { clearTimeout(timer); nativeRequests.delete(id); reject(error); }

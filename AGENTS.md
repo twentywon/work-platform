@@ -13,3 +13,5 @@
 - v0.6 uses a hidden VBS launcher and WinForms WebView2 host. Close the owned helper with the app; never hide an unmanaged server with no lifecycle. Keep Microsoft SDK DLL license and provenance in the ZIP. Existing Chrome/Edge IndexedDB is separate: preserve backup/restore migration instructions. Never claim Windows WebView2 execution was tested on Linux.
 
 - v0.7 changes drawer deletion to cascade through contained board objects. Never delete the user’s original PC files. Keep in-session deletion undo, multi-selection/group geometry, drag-to-drawer identity, and persisted whole-object typography covered by tests. Context controls belong in one horizontal row below the insertion toolbar.
+
+- v0.8 renames the product to 코션 (Cotion), with 코션 실행.vbs and a custom ICO/AppUserModelID. Preserve the legacy MoaWeb directory, moa-workspace IndexedDB and backup format. Rotation must not alter x/y/w/h. Keep multiline heading layout, actual text alignment, native-vs-object clipboard behavior and general undo/redo covered by regression tests. Do not reintroduce the format-reset button.

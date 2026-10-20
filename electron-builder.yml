@@ -1,6 +1,6 @@
 appId: kr.moa.workspace
-productName: 모아
-executableName: Moa
+productName: 코션
+executableName: Cotion
 asar: true
 directories:
   output: release
@@ -16,7 +16,7 @@ win:
   icon: build/icon.ico
   signAndEditExecutable: false
 portable:
-  artifactName: Moa-${version}-Windows.exe
+  artifactName: Cotion-${version}-Windows.exe
   requestExecutionLevel: user
 linux:
   target: dir

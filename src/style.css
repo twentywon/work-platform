@@ -1786,3 +1786,29 @@ main {
 .block-vline::before { width: var(--line-width,1px); background: var(--line-color,#c4ccdc); }
 .media-content img, .media-content video { object-fit: var(--media-fit,contain); }
 .canvas:focus { outline: none; }
+
+/* Cotion wordmark uses installed Korean serif faces without fetching remote fonts. */
+.brand { gap: 9px; font-weight: 500; letter-spacing: 1px; }
+.brand-wordmark { font-family: Batang, '바탕', 'Noto Serif KR', serif; font-size: 30px; font-weight: 500; }
+.brand-symbol { width: 37px; height: 37px; transform: none; border-radius: 0; background: none; }
+.brand-symbol svg { width: 100%; height: 100%; transform: none; }
+/* A text frame grows with its object and lays out lines as text, including long words. */
+.editable { white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; min-width: 0; }
+.editable.heading { display: block; }
+.block-text.heading { display: flex; flex-direction: column; }
+.block-text.heading::before { flex: 0 0 auto; }
+.block-text.heading > .editable { flex: 1 1 auto; height: auto; min-height: 0; }
+.canvas { overflow: visible; }
+.block-shape { background: transparent; border-radius: 0; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.shape-surface { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.block-shape .shape-text { position: relative; z-index: 1; width: 100%; min-width: 0; height: auto; max-height: 100%; overflow-wrap: anywhere; }
+.block-triangle { padding: 50px 35px 15px; }.block-diamond,.block-star { padding: 40px; }
+.block-arrow { padding: 20px 70px 20px 18px; }.block-speech { padding-bottom: 36px; }
+.block-heart { padding: 38px 28px 25px; }
+#shapes-menu { max-height: min(440px,60vh); overflow-y: auto; }
+.control-divider { padding: 0 !important; }
+.context-toolbar .history-tools { display: flex; gap: 3px; padding-right: 7px; border-right: 1px solid #d6deeb; flex-shrink: 0; }
+.history-tools svg { width: 15px; height: 15px; }
+
+@font-face { font-family: "Cotion Title Serif"; src: url("./assets/cotion-title.woff?inline") format("woff"); font-weight: 500; font-style: normal; font-display: swap; unicode-range: U+CF54,U+C158; }
+.brand-wordmark { font-family: "Cotion Title Serif", Batang, "바탕", serif; }

@@ -1,3 +1,4 @@
+import {shapes,isShape} from './shapes.js';
 export const fonts = {
  system: ['기본 글꼴', '"Segoe UI", "Malgun Gothic", sans-serif'],
  malgun: ['맑은 고딕', '"Malgun Gothic", sans-serif'],
@@ -7,7 +8,7 @@ export const fonts = {
  georgia: ['Georgia', 'Georgia, serif'],
  mono: ['고정폭', 'Consolas, monospace'],
 };
-export const textTypes = ['text','note','checkbox','rect','circle','table','web','pagelink','file','drawer'];
+export const textTypes = ['text','note','checkbox',...Object.keys(shapes),'table','web','pagelink','file','drawer'];
 export const hexColor = value => typeof value==='string'&&/^#[a-f\d]{6}$/i.test(value);
 export function textStyle(format={}) {
  const parts=[];
@@ -23,9 +24,10 @@ export function textStyle(format={}) {
 }
 export function appearanceStyle(block) {
  const parts=[];
- if(hexColor(block.background)||block.background==='transparent')parts.push('background:'+block.background);
- if(hexColor(block.borderColor))parts.push('border-color:'+block.borderColor);
- if(Number.isFinite(block.borderWidth))parts.push('border-width:'+Math.max(0,Math.min(12,block.borderWidth))+'px');
+ const shape=isShape(block.type);
+ if(hexColor(block.background)||block.background==='transparent')parts.push((shape?'--shape-fill:':'background:')+block.background);
+ if(hexColor(block.borderColor))parts.push((shape?'--shape-stroke:':'border-color:')+block.borderColor);
+ if(Number.isFinite(block.borderWidth))parts.push((shape?'--shape-stroke-width:':'border-width:')+Math.max(0,Math.min(12,block.borderWidth))+'px');
  if(Number.isFinite(block.opacity))parts.push('opacity:'+Math.max(.1,Math.min(1,block.opacity)));
  if(hexColor(block.lineColor))parts.push('--line-color:'+block.lineColor);
  if(Number.isFinite(block.lineWidth))parts.push('--line-width:'+Math.max(1,Math.min(20,block.lineWidth))+'px');
