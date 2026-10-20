@@ -1,3 +1,4 @@
+import {migrateCheckBlocks} from './line-editor.js';
 import {blockNames} from './blocks.js';
 const id=value=>typeof value==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(value);
 export async function makeBackup(state,files) {
@@ -35,5 +36,5 @@ export function readBackup(data) {
     if(blob){const binary=atob(blob.data);metadata.file=new File([Uint8Array.from(binary,c=>c.charCodeAt(0))],metadata.name,{type:blob.type,lastModified:blob.lastModified});}
     return metadata;
   });
-  return {state,files};
+  return {state:migrateCheckBlocks(state),files};
 }

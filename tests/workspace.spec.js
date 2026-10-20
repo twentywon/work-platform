@@ -63,6 +63,7 @@ test("table, shapes, both dividers, movement, resizing and deletion", async ({
   page,
 }) => {
   await page.locator("[data-add=table]").click();
+  await page.locator('#table-form [type=submit]').click();
   await page.locator(".block-table td").first().fill("요구사항 정리");
   await page.locator("[data-block-action=row]").click();
   await expect(page.locator(".block-table tr")).toHaveCount(5);
@@ -98,7 +99,7 @@ test("table, shapes, both dividers, movement, resizing and deletion", async ({
   expect(
     await block.evaluate((el) => parseFloat(el.style.width)),
   ).toBeGreaterThan(original.w);
-  await page.locator("[data-block-action=delete]").click();
+  await openObjectMenu(page);await page.locator("[data-block-action=delete]").click();
   await expect(page.locator(".block-hline")).toHaveCount(1);
 });
 test("file preview, hover, download and persisted upload", async ({ page }) => {
@@ -343,18 +344,19 @@ test('board fills the width, title panel is removed, rotation persists and movem
   await page.locator('[data-add=rect]').click();
   const block=page.locator('.block-rect').last();
   const id=await block.getAttribute('data-id');
-  await page.locator('#rotation-angle').fill('30');
+  await openObjectMenu(page);await page.locator('#rotation-angle').fill('30');
   await page.locator('#rotation-angle').press('Tab');
   await expect(block).toHaveCSS('transform',/matrix/);
-  await page.locator('[data-block-action=rotate]').click();
+  await openObjectMenu(page);await page.locator('[data-block-action=rotate]').click();
   await expect(page.locator('#rotation-angle')).toHaveValue('120');
   await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');
   await page.reload();
   const restored=page.locator(`[data-id="${id}"]`);
   expect(await restored.getAttribute('style')).toContain('rotate(120deg)');
   await restored.click();
-  await page.locator('#rotation-angle').fill('0');
+  await openObjectMenu(page);await page.locator('#rotation-angle').fill('0');
   await page.locator('#rotation-angle').press('Tab');
+  await page.keyboard.press('Escape');
   await restored.locator('.drag-handle').scrollIntoViewIfNeeded();
   let handle=await restored.locator('.drag-handle').boundingBox();
   await page.mouse.move(handle.x+10,handle.y+10);await page.mouse.down();
@@ -373,16 +375,16 @@ test('board fills the width, title panel is removed, rotation persists and movem
 });
 
 async function insertExtra(page, action) {
-  await page.locator('[data-menu=extras]').click();
   await page.locator(action).click();
 }
 test('checkboxes, web links and page links persist and navigate', async ({page}) => {
   await expect(page.locator('.canvas-meta')).toHaveCount(0);
-  await page.locator('[data-add=checkbox]').click();
-  const task=page.locator('.block-checkbox');
+  await page.locator('[data-add=text]').click();
+  const task=page.locator('.block-text').last();
   await task.locator('.editable').fill('계약서 확인');
+  await page.locator('[data-line-toggle]').click();
   await task.getByRole('checkbox').check();
-  await expect(task.locator('.check-item')).toHaveClass(/done/);
+  await expect(task.locator('.text-line')).toHaveClass(/line-done/);
   await insertExtra(page,'[data-action=web]');
   await page.locator('[name=url]').fill('javascript:alert(1)');
   await page.locator('#link-form [type=submit]').click();
@@ -402,8 +404,8 @@ test('checkboxes, web links and page links persist and navigate', async ({page})
   await expect(page.locator('.block-pagelink')).toContainText('프로젝트 자료');
   await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');
   await page.reload();
-  await expect(page.locator('.block-checkbox .editable')).toHaveText('계약서 확인');
-  await expect(page.locator('.block-checkbox input[type=checkbox]')).toBeChecked();
+  await expect(page.locator('.block-text').last().locator('.editable')).toHaveText('계약서 확인');
+  await expect(page.locator('.block-text').last().locator('input[type=checkbox]')).toBeChecked();
   await expect(page.locator('.block-web a')).toContainText('팀 홈페이지');
   await page.locator('[data-board-page]').click();
   await expect(page.locator('#page-title')).toHaveValue('프로젝트 자료');
@@ -529,9 +531,10 @@ test('drawer contains mixed objects, toggles, persists and extracts members',asy
  await page.locator('#drawer-form [type=submit]').click();
  await expect(drawer.locator('.drawer-entry')).toHaveCount(2);
  await expect(drawer.locator('img')).toBeVisible();
- await drawer.locator('[data-drawer-check]').click();
- await drawer.locator('.block-checkbox .editable').fill('서랍 안 할 일');
- await drawer.locator('.block-checkbox input').check();
+ await drawer.locator('[data-drawer-note]').click();
+ await drawer.locator('.block-note .editable').fill('서랍 안 할 일');
+ await page.locator('[data-line-toggle]').click();
+ await drawer.locator('.block-note input').check();
  await drawer.locator('[data-drawer-toggle]').click();
  await expect(drawer.locator('.drawer-list')).toHaveCount(0);
  await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');
@@ -540,7 +543,7 @@ test('drawer contains mixed objects, toggles, persists and extracts members',asy
  await expect(page.locator('.drawer-list')).toHaveCount(0);
  await page.locator('[data-drawer-toggle]').click();
  await expect(page.locator('.block-drawer .drawer-entry')).toHaveCount(3);
- await expect(page.locator('.block-drawer .block-checkbox input')).toBeChecked();
+ await expect(page.locator('.block-drawer .block-note input')).toBeChecked();
  const entry=page.locator('.drawer-entry').filter({has:page.locator('.file-open')});
  await entry.locator('[data-drawer-out]').click();
  await expect(page.locator('.block-drawer .drawer-entry')).toHaveCount(2);
@@ -563,7 +566,7 @@ test('workspace backup restores media, drawer contents and text after replacemen
  const backup=await downloadTextFile(page,page.locator('#export-backup'));
  expect(backup.filename).toBe('Cotion-workspace-backup.json');
  await page.locator('#close-modal').click();
- await page.locator('[data-add=checkbox]').click();
+ await page.locator('[data-add=text]').click();
  await page.locator('#backup-input').setInputFiles({name:'restore.json',mimeType:'application/json',buffer:Buffer.from(backup.text)});
  await expect(page.locator('.block-checkbox')).toHaveCount(0);
  await expect(page.locator('.drawer-entry')).toHaveCount(2);
@@ -625,6 +628,7 @@ async function boardCoordinates(page,x,y) {
  return page.locator('#canvas').evaluate((el,{x,y})=>{const r=el.getBoundingClientRect(),z=r.width/parseFloat(el.style.width);return {x:r.x+x*z,y:r.y+y*z,z};},{x,y});
 }
 async function editSetting(page,prop,value) {
+ if(['x','y','w','h','rotation'].includes(prop))await openObjectMenu(page);
  const input=page.locator(`[data-prop="${prop}"]`);await input.fill(String(value));await input.press('Tab');
 }
 test('marquee, additive selection and group drag preserve relative placement',async({page})=>{
@@ -639,7 +643,7 @@ test('marquee, additive selection and group drag preserve relative placement',as
  await page.mouse.move(grip.x+5,grip.y+5);await page.mouse.down();await page.mouse.move(grip.x+5+60*start.z,grip.y+5+40*start.z,{steps:6});await page.mouse.up();
  expect(await page.locator('[data-id=a]').evaluate(el=>[parseFloat(el.style.left),parseFloat(el.style.top)])).toEqual([160,140]);
  expect(await page.locator('[data-id=b]').evaluate(el=>[parseFloat(el.style.left),parseFloat(el.style.top)])).toEqual([460,170]);
- await page.locator('[data-block-action=align-left]').click();
+ await openObjectMenu(page);await page.locator('[data-block-action=align-left]').click();
  expect(await page.locator('[data-id=b]').evaluate(el=>parseFloat(el.style.left))).toBeLessThan(200);
  await page.locator('#canvas').focus();await page.keyboard.press('Delete');await expect(page.locator('.block')).toHaveCount(1);
  await page.keyboard.press('Control+z');await expect(page.locator('.block')).toHaveCount(3);
@@ -658,10 +662,10 @@ test('existing selected objects drop into a collapsed drawer and persist',async(
 });
 test('drawer deletion removes its contents and undo preserves unrelated edits',async({page})=>{
  await seedInteractionBoard(page,[{id:'d',type:'drawer',x:100,y:100,w:380,h:60},{id:'inside',type:'note',parentId:'d',x:100,y:100},{id:'file',type:'file',parentId:'d',fileId:'native-record',name:'original.hwp',x:100,y:100},{id:'other',type:'text',x:600,y:100,w:400,h:100,text:'그대로 둘 내용'}]);
- await page.locator('[data-id=d] > .edge-right').click();await page.locator('[data-block-action=delete]').click();
+ await page.locator('[data-id=d] > .edge-right').click();await openObjectMenu(page);await page.locator('[data-block-action=delete]').click();
  await expect(page.locator('.block')).toHaveCount(1);
  await page.locator('[data-id=other] .editable').fill('삭제 이후에 수정한 내용');
- await page.getByRole('button',{name:'삭제 취소',exact:true}).click();
+ await openObjectMenu(page);await page.getByRole('button',{name:'삭제 취소',exact:true}).click();
  await page.locator('[data-id=d] [data-drawer-toggle]').click();await expect(page.locator('.drawer-entry')).toHaveCount(2);
  await expect(page.locator('[data-id=other] .editable')).toHaveText('삭제 이후에 수정한 내용');
  await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');await page.reload();await expect(page.locator('.drawer-entry')).toHaveCount(2);
@@ -684,8 +688,8 @@ test('text settings live below insertion toolbar and formatting persists',async(
  await page.locator('[data-id=link] .edge-top').click();await editSetting(page,'text:size',22);await page.getByRole('button',{name:'굵게',exact:true}).click();
  await expect(page.locator('[data-id=link] strong')).toHaveCSS('font-size','22px');await expect(page.locator('[data-id=link] strong')).toHaveCSS('font-weight','400');
  await page.locator('[data-id=check-format] .edge-right').click();await page.getByRole('button',{name:'밑줄',exact:true}).click();
- await page.locator('[data-id=check-format] [data-check]').check();await expect(page.locator('[data-id=check-format] .editable')).toHaveCSS('text-decoration-line','underline line-through');
- await page.locator('[data-id=check-format] [data-check]').uncheck();await expect(page.locator('[data-id=check-format] .editable')).toHaveCSS('text-decoration-line','underline');
+ await page.locator('[data-id=check-format] [data-line-check]').check();await expect(page.locator('[data-id=check-format] [data-line-content]')).toHaveCSS('text-decoration-line','line-through');await expect(page.locator('[data-id=check-format] .editable')).toHaveCSS('text-decoration-line','underline');
+ await page.locator('[data-id=check-format] [data-line-check]').uncheck();await expect(page.locator('[data-id=check-format] .editable')).toHaveCSS('text-decoration-line','underline');
 });
 test('media and line settings persist and position locking prevents accidental moves',async({page})=>{
  const {readFile}=await import('node:fs/promises');
@@ -696,7 +700,7 @@ test('media and line settings persist and position locking prevents accidental m
  await page.locator('#media-input').setInputFiles({name:'clip.webm',mimeType:'video/webm',buffer:await readFile('tests/fixtures/clip.webm')});
  await page.locator('[data-prop=fit]').selectOption('cover');await page.locator('[data-prop=videoLoop]').check();await page.locator('[data-prop=videoMuted]').check();
  const video=page.locator('video');await expect.poll(()=>video.evaluate(v=>v.loop&&v.muted)).toBe(true);await expect(video).toHaveCSS('object-fit','cover');
- await page.locator('[data-prop=locked]').check();await expect(page.locator('.block-media > .drag-handle')).toBeHidden();
+ await openObjectMenu(page);await page.locator('[data-prop=locked]').check();await expect(page.locator('.block-media > .drag-handle')).toBeHidden();
  await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');await page.reload();await expect.poll(()=>video.evaluate(v=>v.loop&&v.muted)).toBe(true);await expect(video).toHaveCSS('object-fit','cover');
 });
 
@@ -706,7 +710,7 @@ test('dragging a native shortcut into a drawer preserves identity without openin
  await page.locator('.toolbar [data-action=register]').click();
  const card=page.locator('.file-open');const fileId=await card.getAttribute('data-file');
  await card.click({modifiers:['Shift']});await expect(page.locator('.block.selected')).toHaveCount(0);expect(await page.evaluate(()=>window.nativeOpened)).toEqual([]);
- await page.locator('[data-add=drawer]').click();await editSetting(page,'x',700);await editSetting(page,'y',100);
+ await page.locator('[data-add=drawer]').click();await editSetting(page,'x',700);await editSetting(page,'y',100);await page.keyboard.press('Escape');
  const source=await card.boundingBox(),dest=await boardCoordinates(page,750,130);
  await page.mouse.move(source.x+100,source.y+40);await page.mouse.down();await page.mouse.move(dest.x,dest.y,{steps:12});await page.mouse.up();
  await expect(page.locator('.block-drawer .file-open')).toHaveAttribute('data-file',fileId);expect(await page.evaluate(()=>window.nativeOpened)).toEqual([]);
@@ -747,7 +751,7 @@ test('Cotion serif branding, actual heading alignment and multiline frames persi
  await page.evaluate(()=>document.fonts.ready);expect(await page.evaluate(()=>[...document.fonts].some(f=>f.family.includes('Cotion Title Serif')&&f.status==='loaded'))).toBe(true);
  await expect(page).toHaveTitle(/코션/);await expect(page.getByRole('button',{name:'서식 초기화',exact:true})).toHaveCount(0);
  await page.locator('[data-id=heading] > .edge-top').click();
- const rangeX=()=>page.locator('[data-id=heading] .editable').evaluate(el=>{const r=document.createRange();r.selectNodeContents(el);return r.getBoundingClientRect().x});
+ const rangeX=()=>page.locator('[data-id=heading] .editable').evaluate(el=>{const r=document.createRange();r.selectNodeContents(el.querySelector('[data-line-content]'));return r.getBoundingClientRect().x});
  const positions=[];for(const align of ['left','center','right']){await page.locator('[data-prop="text:align"]').selectOption(align);positions.push(await rangeX());}
  expect(positions[1]-positions[0]).toBeGreaterThan(100);expect(positions[2]-positions[1]).toBeGreaterThan(100);
  const heading=page.locator('[data-id=heading] .editable');await heading.fill('첫 번째 줄\n두 번째 줄\n세 번째 줄\n네 번째 줄');
@@ -755,15 +759,15 @@ test('Cotion serif branding, actual heading alignment and multiline frames persi
  expect(await heading.evaluate(el=>el.scrollHeight-el.clientHeight)).toBeLessThanOrEqual(2);
  const plain=page.locator('[data-id=plain] .editable');await plain.fill('A'.repeat(140));
  expect(await plain.evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(2);expect(await plain.evaluate(el=>{const r=document.createRange();r.selectNodeContents(el);return r.getBoundingClientRect().height})).toBeGreaterThan(60);
- await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');await page.reload();await expect(heading).toHaveText('첫 번째 줄\n두 번째 줄\n세 번째 줄\n네 번째 줄');await expect(heading).toHaveCSS('text-align','right');
+ await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');await page.reload();expect(await heading.innerText()).toBe('첫 번째 줄\n두 번째 줄\n세 번째 줄\n네 번째 줄');await expect(heading).toHaveCSS('text-align','right');
 });
 test('rotation fields, quarter turns and handles never change stored position or size',async({page})=>{
  await seedInteractionBoard(page,[{id:'rot',type:'rect',x:0,y:0,w:600,h:120}]);
  await page.locator('[data-id=rot] > .edge-bottom').click();
  const geometry=()=>page.locator('[data-id=rot]').evaluate(el=>[el.style.left,el.style.top,el.style.width,el.style.height]);const original=await geometry();
- await page.locator('#rotation-angle').fill('90');await page.locator('#rotation-angle').press('Tab');expect(await geometry()).toEqual(original);
- await page.locator('[data-block-action=rotate]').click();expect(await geometry()).toEqual(original);
- await page.locator('#rotation-angle').fill('0');await page.locator('#rotation-angle').press('Tab');
+ await openObjectMenu(page);await page.locator('#rotation-angle').fill('90');await page.locator('#rotation-angle').press('Tab');expect(await geometry()).toEqual(original);
+ await openObjectMenu(page);await page.locator('[data-block-action=rotate]').click();expect(await geometry()).toEqual(original);
+ await openObjectMenu(page);await page.locator('#rotation-angle').fill('0');await page.locator('#rotation-angle').press('Tab');
  // Bring the handle inside the viewport without changing rotation semantics.
  await editSetting(page,'x',250);await editSetting(page,'y',200);const moved=await geometry();
  const box=await page.locator('[data-id=rot]').boundingBox(),handle=await page.locator('[data-id=rot] > .rotate-handle').boundingBox();
@@ -798,11 +802,11 @@ test('Windows edit shortcuts format, nudge, save and undo/redo without losing co
 });
 test('single object alignment uses the board while multiple alignment uses selected objects',async({page})=>{
  await seedInteractionBoard(page,[{id:'a',type:'note',x:100,y:100,w:200,h:150},{id:'b',type:'note',x:500,y:100,w:200,h:150}]);
- await page.locator('[data-id=a] > .edge-bottom').click();await page.locator('[data-prop=objectAlign]').selectOption('center-x');
+ await page.locator('[data-id=a] > .edge-bottom').click();await openObjectMenu(page);await page.locator('[data-prop=objectAlign]').selectOption('center-x');
  expect(await page.locator('[data-id=a]').evaluate(el=>parseFloat(el.style.left))).toBe(480);
- await page.locator('[data-prop=objectAlign]').selectOption('left');expect(await page.locator('[data-id=a]').evaluate(el=>parseFloat(el.style.left))).toBe(0);
- await page.locator('[data-prop=objectAlign]').selectOption('right');expect(await page.locator('[data-id=a]').evaluate(el=>parseFloat(el.style.left))).toBe(960);
- await page.locator('[data-id=b] > .edge-bottom').click({modifiers:['Shift']});await page.locator('[data-block-action=align-left]').click();
+ await openObjectMenu(page);await page.locator('[data-prop=objectAlign]').selectOption('left');expect(await page.locator('[data-id=a]').evaluate(el=>parseFloat(el.style.left))).toBe(0);
+ await openObjectMenu(page);await page.locator('[data-prop=objectAlign]').selectOption('right');expect(await page.locator('[data-id=a]').evaluate(el=>parseFloat(el.style.left))).toBe(960);
+ await page.locator('[data-id=b] > .edge-bottom').click({modifiers:['Shift']});await openObjectMenu(page);await page.locator('[data-block-action=align-left]').click();
  expect(await page.locator('[data-id=a]').evaluate(el=>parseFloat(el.style.left))).toBe(500);
 });
 test('object keyboard copy/cut/paste preserves drawer references across pages',async({page})=>{
@@ -831,4 +835,76 @@ test('icon rendering keeps existing SVGs while editing and fills dynamic control
   await page.locator('[data-action=help]').first().click();
   await expect(page.locator('[role=dialog]')).toBeVisible();
   await expect(page.locator('i[data-lucide]')).toHaveCount(0);
+});
+
+async function openObjectMenu(page) { await page.keyboard.press('Shift+F10');await expect(page.getByRole('menu',{name:'개체 컨텍스트 메뉴'})).toBeVisible(); }
+
+async function caretInLine(editor,index,offset=0) {
+ await editor.evaluate((root,{index,offset})=>{
+  root.focus();const content=root.querySelector(`[data-text-line="${index}"] [data-line-content]`);
+  const node=content.firstChild;const range=document.createRange();range.setStart(node,node.nodeType===Node.TEXT_NODE?Math.min(offset,node.length):0);range.collapse(true);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);
+ },{index,offset});
+}
+test('insertion tools are visible and table dialog validates dimensions, cancellation and headers',async({page})=>{
+ await expect(page.locator('[data-menu=extras],[data-add=checkbox],[data-drawer-check]')).toHaveCount(0);
+ for(const selector of ['[data-action=media]','[data-action=web]','[data-add=calendar]','[data-action=pagelink]'])await expect(page.locator('.toolbar '+selector)).toBeVisible();
+ const count=await page.locator('.block-table').count();await page.locator('[data-add=table]').click();
+ await expect(page.getByRole('dialog',{name:'표 만들기'})).toBeVisible();await page.locator('[data-table-cancel]').click();await expect(page.locator('.block-table')).toHaveCount(count);
+ await page.locator('[data-add=table]').click();await page.getByLabel('줄 수',{exact:true}).fill('100');await page.getByLabel('칸 수',{exact:true}).fill('30');await page.locator('#table-form [type=submit]').click();await expect(page.locator('#table-error')).toContainText('1,500');
+ await page.getByLabel('줄 수',{exact:true}).fill('3');await page.getByLabel('칸 수',{exact:true}).fill('5');await page.getByLabel('표 너비',{exact:true}).fill('400');await page.getByLabel('표 높이',{exact:true}).fill('200');await page.locator('[name=header]').uncheck();await page.locator('#table-form [type=submit]').click();
+ const table=page.locator('.block-table').last();await expect(table.locator('tr')).toHaveCount(3);await expect(table.locator('td')).toHaveCount(15);await expect(table.locator('th')).toHaveCount(0);
+ await table.locator('[data-cell="1,2"]').fill('설정한 표');await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');await page.reload();await expect(table.locator('[data-cell="1,2"]')).toHaveText('설정한 표');expect(await table.evaluate(el=>[parseFloat(el.style.width),parseFloat(el.style.height)])).toEqual([400,200]);
+});
+test('object right-click menu preserves groups, fits viewport, dismisses and edits placement',async({page})=>{
+ await seedInteractionBoard(page,[{id:'a',type:'text',x:100,y:100,w:300,h:160,text:'첫 개체'},{id:'b',type:'note',x:500,y:330,w:280,h:160}]);
+ await page.locator('[data-id=a] > .edge-right').click();
+ for(const selector of ['[data-prop=x]','[data-prop=w]','[data-prop=locked]','[data-block-action=duplicate]','[data-block-action=delete]'])await expect(page.locator('#selection-tools '+selector)).toHaveCount(0);
+ await page.locator('[data-id=b] > .edge-right').click({modifiers:['Shift']});await page.locator('[data-id=a] > .edge-right').click({button:'right'});
+ const menu=page.getByRole('menu',{name:'개체 컨텍스트 메뉴'});await expect(menu).toBeVisible();await page.locator('#viewport').evaluate(el=>el.dispatchEvent(new Event('scroll')));await expect(menu).toBeVisible();await expect(page.locator('.block.selected')).toHaveCount(2);await menu.locator('[data-block-action=align-left]').click();
+ expect(await page.locator('[data-id=b]').evaluate(el=>parseFloat(el.style.left))).toBe(100);await page.keyboard.press('Escape');await expect(menu).toBeHidden();
+ await page.locator('[data-id=a] .editable').click();await page.locator('[data-id=a] > .edge-top').click({button:'right'});await menu.getByLabel('X',{exact:true}).fill('180');await menu.getByLabel('X',{exact:true}).press('Tab');expect(await page.locator('[data-id=a]').evaluate(el=>parseFloat(el.style.left))).toBe(180);
+ const bounds=await menu.boundingBox();expect(bounds.x).toBeGreaterThanOrEqual(0);expect(bounds.y+bounds.height).toBeLessThanOrEqual(960);
+ await menu.locator('[data-block-action=duplicate]').click();await expect(page.locator('.block')).toHaveCount(3);
+ await openObjectMenu(page);await page.locator('#canvas').click({position:{x:15,y:15}});await expect(menu).toBeHidden();
+});
+test('cursor checklist applies only to its paragraph, wraps fully, continues and persists through editing',async({page})=>{
+ await seedInteractionBoard(page,[{id:'lines',type:'text',x:100,y:100,w:300,h:440,text:'첫 번째 줄\n두 번째 작업은 길어져도 같은 줄 전체에 체크를 적용합니다. '.repeat(1)+'\n마지막 줄'}]);
+ const editor=page.locator('[data-id=lines] [data-edit]');await caretInLine(editor,1,4);await page.locator('[data-line-toggle]').click();
+ await expect(editor.locator('[data-line-check]')).toHaveCount(1);await expect(editor.locator('[data-line-check="1"]')).toBeVisible();await editor.locator('[data-line-check="1"]').check();await page.keyboard.press('Control+z');await expect(editor.locator('[data-line-check="1"]')).not.toBeChecked();await page.keyboard.press('Control+y');await expect(editor.locator('[data-line-check="1"]')).toBeChecked();await expect(editor.locator('[data-text-line="1"] [data-line-content]')).toHaveCSS('text-decoration-line','line-through');await expect(editor.locator('[data-text-line="0"] [data-line-content]')).toHaveCSS('text-decoration-line','none');
+ await caretInLine(editor,1,999);await page.keyboard.press('End');await page.keyboard.press('Enter');await page.keyboard.insertText('새 할 일');await expect(editor.locator('[data-line-check]')).toHaveCount(2);await expect(editor.locator('[data-line-check="1"]')).toBeChecked();await expect(editor.locator('[data-line-check="2"]')).not.toBeChecked();
+ await page.keyboard.press('Control+z');await page.keyboard.press('Control+y');await expect(editor.locator('[data-line-check="1"]')).toBeChecked();
+ await caretInLine(editor,2,0);await page.keyboard.press('Backspace');await expect(editor.locator('[data-line-check]')).toHaveCount(1);await expect(editor.locator('[data-text-line="1"]')).toContainText('새 할 일');
+ await caretInLine(editor,1,2);await page.locator('[data-line-toggle]').click();await expect(editor.locator('[data-line-check]')).toHaveCount(0);await page.keyboard.press('Control+z');await expect(editor.locator('[data-line-check="1"]')).toBeChecked();
+ await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');await page.reload();await expect(editor.locator('[data-line-check="1"]')).toBeChecked();await expect(editor.locator('[data-text-line="2"]')).toHaveText('마지막 줄');
+});
+test('legacy tasks, cell checklists, clipboard and backup retain checked paragraphs',async({page})=>{
+ await seedInteractionBoard(page,[{id:'legacy',type:'checkbox',x:100,y:100,w:300,h:100,text:'이전 할 일',checked:true},{id:'t',type:'table',x:500,y:100,w:500,h:200,cells:[['항목'],['표 안 할 일\n추가 설명']]}]);
+ await expect(page.locator('.block-checkbox')).toHaveCount(0);await expect(page.locator('[data-id=legacy] [data-line-check]')).toBeChecked();
+ const cell=page.locator('[data-id=t] [data-cell="1,0"]');await cell.click();await caretInLine(cell,0,2);await page.locator('[data-line-toggle]').click();await cell.locator('[data-line-check="0"]').check();
+ await page.locator('[data-id=t] > .edge-top').click();await page.locator('#canvas').focus();
+ await expect(page.locator('.block.selected')).toHaveAttribute('data-id','t');
+ await page.evaluate(()=>{window.checklistCopied=null;document.addEventListener('copy',e=>{window.checklistCopied=e.clipboardData.getData('application/x-cotion-blocks');});});
+ await page.keyboard.press('Control+c');await expect.poll(()=>page.evaluate(()=>window.checklistCopied)).not.toBe('');await page.keyboard.press('Control+v');
+ await expect(page.locator('.block-table')).toHaveCount(2);await expect(page.locator('.block-table').last().locator('[data-line-check="0"]')).toBeChecked();
+ await page.locator('[data-action=backup-menu]').click();const backup=await downloadTextFile(page,page.locator('#export-backup'));await page.locator('#close-modal').click();
+ await page.locator('#backup-input').setInputFiles({name:'checks.json',mimeType:'application/json',buffer:Buffer.from(backup.text)});await expect(page.locator('[data-id=legacy] [data-line-check]')).toBeChecked();await expect(cell.locator('[data-line-check="0"]')).toBeChecked();
+});
+test('composition commits Korean text inside a checked paragraph without duplicating it',async({page})=>{
+ test.skip(!!process.env.MOA_HTML_FILE,'Actual Chromium IME protocol is checked in the browser suite.');
+ await seedInteractionBoard(page,[{id:'ime',type:'text',x:100,y:100,w:350,h:180,text:'작업 ',lineChecks:[false]}]);
+ const editor=page.locator('[data-id=ime] [data-edit]');await caretInLine(editor,0,3);const session=await page.context().newCDPSession(page);
+ await session.send('Input.imeSetComposition',{text:'ㅎ',selectionStart:1,selectionEnd:1});await session.send('Input.imeSetComposition',{text:'한글',selectionStart:2,selectionEnd:2});await session.send('Input.insertText',{text:'한글'});
+ await expect(editor).toContainText('작업 한글');await expect(editor.locator('[data-line-check]')).toHaveCount(1);await page.keyboard.insertText(' 입력');await expect(editor).toHaveText('작업 한글 입력');await session.detach();
+ await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');await page.reload();await expect(editor).toHaveText('작업 한글 입력');
+});
+
+test('multiline paste and empty Enter preserve neighboring checks while native text copy stays plain',async({page})=>{
+ await seedInteractionBoard(page,[{id:'paste-lines',type:'text',x:100,y:100,w:350,h:300,text:'처음\n끝',lineChecks:[false,true]}]);
+ const editor=page.locator('[data-id=paste-lines] [data-edit]');await caretInLine(editor,0,2);
+ await editor.evaluate(root=>{const data=new DataTransfer();data.setData('text/plain','\n새 줄\n');root.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:data}));});
+ await expect(editor.locator('[data-text-line]')).toHaveCount(4);await expect(editor.locator('[data-line-check="3"]')).toBeChecked();await expect(editor.locator('[data-line-check="1"]')).not.toBeChecked();
+ await caretInLine(editor,2,0);await page.keyboard.press('Enter');await expect(editor.locator('[data-line-check="2"]')).toHaveCount(0);await expect(editor.locator('[data-text-line]')).toHaveCount(4);
+ await page.evaluate(()=>{window.plainCopied=null;document.addEventListener('copy',e=>{window.plainCopied=e.clipboardData.getData('application/x-cotion-blocks');});});
+ await caretInLine(editor,0,0);await page.keyboard.press('Control+a');await page.keyboard.press('Control+c');expect(await page.evaluate(()=>window.plainCopied)).toBe('');
+ await page.locator('[data-add=text]').click();const target=page.locator('.block-text').last().locator('[data-edit]');await target.fill('');await page.keyboard.press('Control+v');await expect(target).toContainText('새 줄');await expect(target.locator('[data-line-check]')).toHaveCount(0);
 });

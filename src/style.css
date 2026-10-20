@@ -1812,3 +1812,35 @@ main {
 
 @font-face { font-family: "Cotion Title Serif"; src: url("./assets/cotion-title.woff?inline") format("woff"); font-weight: 500; font-style: normal; font-display: swap; unicode-range: U+CF54,U+C158; }
 .brand-wordmark { font-family: "Cotion Title Serif", Batang, "바탕", serif; }
+
+/* All insertion tools remain visible; narrower windows wrap the toolbar. */
+.toolbar { height: auto; min-height: 54px; flex-wrap: wrap; flex-shrink: 0; }
+.toolbar-group { flex-wrap: wrap; }
+.toolbar-right { margin-left: auto; }
+.object-context-menu { position: fixed; z-index: 1000; width: min(330px,calc(100vw - 16px)); max-height: min(620px,calc(100dvh - 16px)); overflow: auto; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; padding: 14px; border: 1px solid #bac6d9; border-radius: 10px; background: #fff; box-shadow: 0 8px 32px #23334e30; color: #35465f; }
+.object-context-menu[hidden] { display: none; }
+.object-context-menu > strong { grid-column: 1/-1; font-size: 12px; padding-bottom: 6px; border-bottom: 1px solid #e0e5ef; }
+.object-context-menu label { display: flex; align-items: center; justify-content: space-between; gap: 5px; font-size: 12px; }
+.object-context-menu input[type=number] { min-width: 0; width: 72px; }
+.object-context-menu input,.object-context-menu select { font: inherit; border: 1px solid #c5cede; border-radius: 4px; padding: 5px; color: inherit; background: #fff; }
+.object-context-menu select { min-width: 0; max-width: 100%; }
+.object-context-menu > select { grid-column: 1/-1; }
+.object-context-menu input[type=checkbox] { accent-color: #5267c8; }
+.object-context-menu button { justify-content: flex-start; min-height: 32px; padding: 6px 8px; border-radius: 5px; font-size: 12px; }
+.object-context-menu [data-block-action=delete] { color: #a23636; }
+.text-line { position: relative; min-height: 1em; white-space: pre-wrap; overflow-wrap: anywhere; }
+.text-line.has-line-check { padding-left: calc(1.6em + 8px); }
+.line-checkbox { position: absolute; left: 8px; top: 0; display: inline-flex; align-items: center; height: 1lh; user-select: none; }
+.line-checkbox input { margin: 0; width: 1em; height: 1em; accent-color: #5267c8; cursor: pointer; }
+.text-line.line-done > [data-line-content] { text-decoration-line: line-through; }
+.table-form { padding: 24px; overflow-y: auto; }
+.table-form fieldset { display: flex; gap: 20px; border: 1px solid #d4dce9; border-radius: 7px; padding: 15px; margin: 0 0 16px; }
+.table-form legend { color: #40516d; padding: 0 6px; font-weight: 600; }
+.table-form label { display: flex; align-items: center; gap: 10px; }
+.table-form input[type=number] { width: 100px; padding: 7px; border: 1px solid #c5cede; border-radius: 4px; font: inherit; }
+.table-form input[type=checkbox] { accent-color: #5267c8; }
+.table-insert-preview { display: grid; width: 100%; max-width: 300px; height: 140px; margin: 18px auto 8px; border-top: 1px solid #acb9cf; border-left: 1px solid #acb9cf; }
+.table-insert-preview span { border-bottom: 1px solid #acb9cf; border-right: 1px solid #acb9cf; }
+.table-insert-preview .header-cell { background: #e9eefb; }
+.table-preview-caption { text-align: center; color: #536785; }
+#table-error { color: #a23636; }
