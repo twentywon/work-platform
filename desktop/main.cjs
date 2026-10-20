@@ -134,7 +134,7 @@ if (primaryInstance)
               responseHeaders: {
                 ...details.responseHeaders,
                 "Content-Security-Policy": [
-                  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; frame-src 'self' blob:; connect-src 'self' blob:; object-src 'none'",
+                  "default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; frame-src 'self' blob:; connect-src 'self' blob:; object-src 'none'",
                 ],
               },
             }),

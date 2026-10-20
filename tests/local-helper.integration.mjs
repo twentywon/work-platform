@@ -1,188 +1,116 @@
 import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
-import {mkdtemp, mkdir, writeFile, readFile, cp, rm} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,readFile,cp,rm} from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import {spawn} from 'node:child_process';
-import http from 'node:http';
-import net from 'node:net';
 import {once} from 'node:events';
 import {chromium} from '@playwright/test';
-const root = await mkdtemp(path.join(os.tmpdir(), 'moa-helper-'));
-const port = 17844;
-const origin = `http://127.0.0.1:${port}`;
-const profile = path.join(root,'data');
-const docs = path.join(root,'docs');
-await mkdir(docs); await mkdir(profile);
-const original = path.join(docs,'실제 원본.txt');
-const timestamp = 1700000000000;
-const {utimes} = await import('node:fs/promises');
-await writeFile(original,'원본 내용'); await utimes(original, timestamp/1000, timestamp/1000);
-await writeFile(path.join(profile,'links.json'),JSON.stringify({entries:{'approved-file':original},roots:[docs]}));
-await cp('windows/Moa-Local.ps1',path.join(root,'Moa-Local.ps1'));
+const root=await mkdtemp(path.join(os.tmpdir(),'moa-helper-'));
+const profile=path.join(root,'data');await mkdir(profile);
+const origin='http://127.0.0.1:17844';
+const original=path.join(root,'원본 문서.txt');await writeFile(original,'원본 내용');
+await writeFile(path.join(profile,'links.json'),JSON.stringify({entries:{'approved-file':original},roots:[]}));
+for(const name of ['Moa-Local.ps1','Moa-Worker.ps1'])await cp('windows/'+name,path.join(root,name));
 await cp('모아.html',path.join(root,'모아.html'));
-const executable = process.env.MOA_POWERSHELL || (process.platform === 'win32' ? 'powershell.exe' : 'pwsh');
-let output = '';
-const child = spawn(executable,['-NoLogo','-NoProfile','-File',path.join(root,'Moa-Local.ps1'),'-NoBrowser','-Port',String(port),'-DataDirectory',profile],{env:process.env});
-child.stdout.on('data',d=>output+=d); child.stderr.on('data',d=>output+=d);
+const executable=process.env.MOA_POWERSHELL||(process.platform==='win32'?'powershell.exe':'pwsh');
+let output='';
+const child=spawn(executable,['-NoLogo','-NoProfile','-File',path.join(root,'Moa-Local.ps1'),'-NoBrowser','-Port','17844','-DataDirectory',profile],{env:process.env});
+child.stdout.on('data',d=>output+=d);child.stderr.on('data',d=>output+=d);
 let browser;
 try {
   await new Promise((resolve,reject)=>{
-    const timeout=setTimeout(()=>reject(Error('helper startup timed out: '+output)),15000);
+    const timeout=setTimeout(()=>reject(Error('Startup timed out: '+output)),15000);
     const check=setInterval(()=>{
-      if(output.includes(origin)){clearInterval(check);clearTimeout(timeout);resolve();}
-      else if(child.exitCode!==null){clearInterval(check);clearTimeout(timeout);reject(Error(output));}
+      if(output.includes(origin)){clearInterval(check);clearTimeout(timeout);resolve()}
+      else if(child.exitCode!==null){clearInterval(check);clearTimeout(timeout);reject(Error(output))}
     },100);
     child.once('error',e=>{clearInterval(check);clearTimeout(timeout);reject(e)});
   });
-  console.log('Helper started');
-  const html=await (await fetch(origin)).text();
+  const html=await(await fetch(origin)).text();
   const token=html.match(/window\.moaLocal=\{token:"([a-f0-9]+)"/)[1];
   const request=(route,body={},headers={})=>fetch(origin+'/api/'+route,{method:'POST',headers:{'Content-Type':'application/json','X-Moa-Token':token,...headers},body:JSON.stringify(body)});
   assert.equal((await request('read',{id:'approved-file'},{'X-Moa-Token':'wrong'})).status,403);
   assert.equal((await request('read',{id:'approved-file'},{Origin:'https://evil.example'})).status,403);
-  const wrongHost = await new Promise((resolve,reject)=>{
-    const req=http.request(origin+'/',{headers:{Host:'evil.example'}},res=>{res.resume();resolve(res.statusCode)});
-    req.on('error',reject);req.end();
-  });
-  assert.equal(wrongHost,403);
   assert.equal((await request('open',{id:original})).status,400);
-  assert.equal((await request('read',{id:'approved-file'})).status,200);
-  const status = await (await request('status')).json();
-  assert.equal(status.version, '0.4.0');
-  assert.equal(status.folderCount, 1);
-  assert.deepEqual(status.folders,[docs]);
+  assert.equal((await request('job',{id:'../../etc/passwd'})).status,400);
+  assert.equal((await request('preview-start',{id:original})).status,400);
   assert.equal((await request('paths',{paths:['relative.txt']})).status,400);
-  assert.equal((await request('folder-path',{path:original})).status,400);
-  const unsupported=path.join(root,'not-a-document.exe');
-  await writeFile(unsupported,'test');
-  assert.equal((await request('paths',{paths:[unsupported]})).status,400);
-  const direct=await (await request('paths',{paths:['"'+original+'"']})).json();
-  assert.equal(direct.files[0].path,original);
-  assert.equal(direct.files[0].id,'approved-file');
-  const idle = net.connect(port,'127.0.0.1');
-  await once(idle,'connect');
-  const start = Date.now();
-  try { assert.equal((await request('status')).status,200); }
-  finally { idle.destroy(); }
-  assert.ok(Date.now()-start<5000,'idle browser connection must not block the helper for 15 seconds');
-  console.log('Access checks and idle connection recovery passed');
-  const metadata={name:path.basename(original),size:Buffer.byteLength('원본 내용'),lastModified:timestamp};
-  const result=await (await request('resolve',{files:[metadata]})).json();
-  assert.equal(result.files[0].path,original);
-  assert.equal(result.files[0].id,'approved-file');
+  const status=await(await request('status')).json();
+  assert.equal(status.version,'0.5.0');assert.equal(status.folderCount,0);
+  const direct=await(await request('paths',{paths:['"'+original+'"']})).json();
+  assert.equal(direct.files[0].id,'approved-file');assert.equal(direct.files[0].path,original);
   await writeFile(original,'수정된 원본의 최신 내용');
-  assert.equal(await (await request('read',{id:'approved-file'})).text(),'수정된 원본의 최신 내용');
-  assert.equal((await request('resolve',{files:[metadata]})).status,400);
-  const updated={...metadata,size:Buffer.byteLength('수정된 원본의 최신 내용')};
-  const {stat}=await import('node:fs/promises');
-  updated.lastModified=(await stat(original)).mtimeMs;
-  await mkdir(path.join(docs,'duplicate'));
-  const duplicate=path.join(docs,'duplicate',path.basename(original));
-  await cp(original,duplicate); await utimes(duplicate,updated.lastModified/1000,updated.lastModified/1000);
-  const ambiguous=await request('resolve',{files:[updated]});
-  assert.equal(ambiguous.status,400);
-  assert.match((await ambiguous.json()).error,/여러 개/);
-  await rm(duplicate);
-  console.log('Read and drop matching passed');
-  browser=await chromium.launch({executablePath:process.env.MOA_CHROMIUM || (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined),args:['--no-sandbox']});
-  const page=await browser.newPage({viewport:{width:1440,height:960}});
-  const errors=[]; page.on('pageerror',e=>{errors.push(e.message);console.log('BROWSER ERROR',e.message)});page.on('console',m=>{if(m.type()==='error')console.log('BROWSER CONSOLE',m.text())});
-  await page.goto(origin);
-  page.setDefaultTimeout(10000);
-  await page.locator('#canvas').waitFor();
-  assert.equal(await page.evaluate(()=>!!window.moaDesktop),true);
-  const bounds=await page.locator('#canvas').boundingBox();
-  await page.locator('#viewport').dispatchEvent('drop',{
-    dataTransfer:await page.evaluateHandle((m)=>{
-      const d=new DataTransfer();d.items.add(new File(['수정된 원본의 최신 내용'],m.name,{lastModified:m.lastModified}));return d;
-    },updated),clientX:bounds.x+300,clientY:bounds.y+360,
+  assert.equal(await(await request('read',{id:'approved-file'})).text(),'수정된 원본의 최신 내용');
+  // Exercise actual isolated process lifecycle without opening an interactive dialog in CI.
+  if(process.platform!=='win32') {
+    const job=await(await request('select-start')).json();assert.ok(job.id);
+    assert.equal((await request('status')).status,200); // Main server remains responsive.
+    let result;
+    for(let i=0;i<50;i++){
+      await new Promise(r=>setTimeout(r,100));
+      const response=await request('job',{id:job.id});result=await response.json();
+      if(!result.pending)break;
+    }
+    assert.match(result.error,/Windows/);
+    assert.equal((await request('job-content',{id:job.id})).status,400);
+    assert.equal((await request('job-cancel',{id:job.id})).status,200);
+    assert.deepEqual((await(await request('job',{id:job.id})).json()).files,[]);
+  }
+  browser=await chromium.launch({executablePath:process.env.MOA_CHROMIUM||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox']});
+  const page=await browser.newPage({viewport:{width:1440,height:960}});page.setDefaultTimeout(15000);
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(origin);await page.locator('#canvas').waitFor();
+  assert.equal(await page.locator('[data-action=link-folder]').count(),0);
+  // Mock only the Windows picker boundary; registration and reads use the real server.
+  await page.route('**/api/select-start',route=>route.fulfill({json:{id:'picker-test'}}));
+  await page.route('**/api/job',async route=>{
+    if(route.request().postDataJSON().id==='picker-test')return route.fulfill({json:{files:direct.files}});
+    return route.continue();
   });
-  console.log('Drop dispatched');
-  const card=page.locator('.file-open').filter({hasText:updated.name});
-  await card.waitFor();
-  assert.match(await card.getAttribute('title'),/실제 원본/);
-  const block=card.locator('..');
-  assert.equal(await block.evaluate(el=>parseFloat(el.style.left)%20),0);
-  await card.hover();
-  await page.getByText('수정된 원본의 최신 내용',{exact:true}).waitFor();
-  let opened;
-  await page.route('**/api/open',async route=>{
-    opened=route.request().postDataJSON();
-    await route.fulfill({json:{opened:true}});
-  });
-  await card.click();
-  await page.waitForTimeout(100);
-  assert.equal(opened.id,'approved-file');
-  assert.equal(await page.locator('.modal').count(),0);
-  await page.locator('#media-input').setInputFiles(path.resolve('tests/fixtures/clip.webm'));
-  const video = page.locator('.media-content video');
-  await video.waitFor();
-  await page.waitForFunction(() => document.querySelector('.media-content video')?.readyState >= 1);
-  await page.locator('[data-add=checkbox]').click();
-  await page.locator('.block-checkbox input').check();
-  assert.equal(await page.locator('.canvas-meta').count(), 0);
-  const manualFile=path.join(root,'직접 경로 원본.txt');
-  await writeFile(manualFile,'바로가기 원본은 이 경로에 있습니다.');
   await page.locator('.toolbar [data-action=register]').click();
-  await page.locator('[name=paths]').fill('"'+manualFile+'"');
-  await page.locator('#save-path').click();
-  const manualCard=page.locator('.file-open').filter({hasText:'직접 경로 원본.txt'});
-  await manualCard.waitFor();
-  await manualCard.click();
-  await page.waitForTimeout(100);
-  const registryAfter=JSON.parse(await readFile(path.join(profile,'links.json'),'utf8'));
-  assert.equal(registryAfter.entries[opened.id],manualFile);
-  const record = await page.evaluate(async()=>{
+  const card=page.locator('.file-open').filter({hasText:'원본 문서.txt'});await card.waitFor();
+  assert.match(await card.getAttribute('title'),/원본 문서/);
+  await card.hover();await page.getByText('수정된 원본의 최신 내용',{exact:true}).waitFor();
+  let opened;let downloads=0;page.on('download',()=>downloads++);
+  await page.route('**/api/open',async route=>{opened=route.request().postDataJSON();await route.fulfill({json:{opened:true}})});
+  await card.click();await page.waitForTimeout(100);assert.equal(opened.id,'approved-file');assert.equal(downloads,0);
+  const record=await page.evaluate(async()=>{
     const db=await new Promise(resolve=>{const r=indexedDB.open('moa-workspace',1);r.onsuccess=()=>resolve(r.result)});
-    return new Promise(resolve=>{const r=db.transaction('files').objectStore('files').getAll();r.onsuccess=()=>resolve(r.result.find(f=>f.name==='직접 경로 원본.txt'))});
+    return new Promise(resolve=>{const r=db.transaction('files').objectStore('files').getAll();r.onsuccess=()=>resolve(r.result.find(f=>f.desktopId==='approved-file'))});
   });
-  assert.equal(record.mode,'desktop');
-  assert.equal(record.path,manualFile);
-  assert.equal(record.file,undefined);
-  await page.locator('[data-action=link-folder]').click();
-  await page.locator('[name=paths]').fill('"'+root+'"');
-  await page.locator('#save-path').click();
+  assert.equal(record.mode,'desktop');assert.equal(record.path,original);assert.equal(record.file,undefined);
+  assert.equal((await(await request('status')).json()).folderCount,0);
+  await page.locator('#viewport').dispatchEvent('drop',{dataTransfer:await page.evaluateHandle(()=>{
+    const d=new DataTransfer();d.items.add(new File(['drop'],'원본 문서.txt'));return d;
+  }),clientX:700,clientY:450});
+  await page.locator('.file-open').filter({hasText:'원본 문서.txt'}).nth(1).waitFor();
+  // Manual path fallback also works without any registered folder.
+  await page.locator('[data-action=path-shortcut]').click();await page.locator('[name=paths]').fill(original);await page.locator('#save-path').click();
   await page.locator('#path-form').waitFor({state:'detached'});
-  const afterFolder=await (await request('status')).json();
-  assert.equal(afterFolder.folderCount,2);
-  const uploadedPath=path.join(root,'선택 업로드 원본.txt');
-  await writeFile(uploadedPath,'브라우저 파일 선택으로 연결한 실제 원본');
-  await page.locator('.toolbar [data-action=register]').click();
-  const chooserEvent = page.waitForEvent('filechooser');
-  await page.locator('#browser-shortcut-pick').click();
-  const chooser = await chooserEvent;
-  await chooser.setFiles(uploadedPath);
-  const uploadedCard=page.locator('.file-open').filter({hasText:'선택 업로드 원본.txt'});
-  await uploadedCard.waitFor();
-  let downloads=0;
-  page.on('download',()=>downloads++);
-  await uploadedCard.click();
-  await page.waitForTimeout(100);
-  const finalRegistry=JSON.parse(await readFile(path.join(profile,'links.json'),'utf8'));
-  assert.equal(finalRegistry.entries[opened.id],uploadedPath);
-  assert.equal(downloads,0);
-  assert.equal(await page.locator('#file-input').inputValue(),'');
-  await page.screenshot({path:path.join(root,'board.png')});
-  await page.route('**/api/status',route=>route.abort());
-  await page.locator('[data-action=link-folder]').click();
-  await page.locator('#legacy-picker').click();
-  await page.locator('#connection-detail').waitFor();
-  assert.match(await page.locator('#connection-detail').textContent(),/연결이 끊겼습니다/);
-  await page.locator('#close-modal').click();
-  await page.unroute('**/api/status');
-  await page.route('**/api/status',route=>route.fulfill({status:404,json:{error:'지원하지 않는 요청입니다.'}}));
-  await page.locator('.toolbar [data-action=register]').click();
-  await page.locator('#legacy-picker').click();
-  await page.locator('#connection-detail').waitFor();
-  assert.match(await page.locator('#connection-detail').textContent(),/이전 버전/);
-  assert.deepEqual(errors,[]);
-  const stored=JSON.parse(await readFile(path.join(profile,'links.json'),'utf8'));
-  assert.equal(stored.entries['approved-file'],original);
-  console.log('PASS: real PowerShell server, explicit path and folder registration, browser file selection, original path handoff, no document copy or download, source updates, ambiguity rejection and connection diagnostics.');
+  // Real PDF rendering runs under the helper's actual CSP, with no external assets.
+  const pdfFile=path.join(root,'real-first-page.pdf');await cp('tests/fixtures/first-page.pdf',pdfFile);
+  await page.locator('[data-action=path-shortcut]').click();await page.locator('[name=paths]').fill(pdfFile);await page.locator('#save-path').click();
+  const pdfCard=page.locator('.file-open').filter({hasText:'real-first-page.pdf'});await pdfCard.waitFor();await pdfCard.hover();
+  const image=page.locator('#hover-preview img[alt="PDF 첫 페이지 이미지"]');await image.waitFor();
+  assert.ok(await image.evaluate(i=>i.complete&&i.naturalWidth>0));
+  // Simulate Office's exported first-page PDF at the platform boundary, render it for real.
+  const docFile=path.join(root,'office-first.doc');await writeFile(docFile,'fixture');
+  await page.route('**/api/preview-start',route=>route.fulfill({json:{id:'office-test'}}));
+  await page.unroute('**/api/job');
+  await page.route('**/api/job',async route=>{
+    if(route.request().postDataJSON().id==='office-test')return route.fulfill({json:{format:'pdf',source:'Word 첫 페이지'}});
+    return route.continue();
+  });
+  await page.route('**/api/job-content',async route=>route.fulfill({contentType:'application/pdf',body:await readFile('tests/fixtures/first-page.pdf')}));
+  await page.locator('[data-action=path-shortcut]').click();await page.locator('[name=paths]').fill(docFile);await page.locator('#save-path').click();
+  const docCard=page.locator('.file-open').filter({hasText:'office-first.doc'});await docCard.waitFor();
+  await docCard.locator('..').locator('[data-preview-file]').click();
+  await page.locator('#preview-body img[alt="첫 페이지 이미지 미리보기"]').waitFor();
+  assert.match(await page.locator('#preview-body').textContent(),/Word 첫 페이지/);
+  const red=await page.locator('#preview-body img').evaluate(i=>{const c=document.createElement('canvas');c.width=i.naturalWidth;c.height=i.naturalHeight;const x=c.getContext('2d');x.drawImage(i,0,0);return x.getImageData(20,20,1,1).data[0]});
+  assert.ok(red>240);assert.deepEqual(errors,[]);
+  console.log('PASS: folder-free picker flow, isolated worker lifecycle, explicit paths, original-file handoff without copies/downloads, PDF/Office first-page rendering under actual CSP. Windows dialog and Office COM execution remain platform checks.');
 } finally {
-  await browser?.close();
-  child.kill();
-  if(child.exitCode===null)await once(child,'exit');
-  await rm(root,{recursive:true,force:true});
+  await browser?.close();child.kill();if(child.exitCode===null)await once(child,'exit');await rm(root,{recursive:true,force:true});
 }

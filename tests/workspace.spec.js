@@ -463,13 +463,41 @@ test('native selection shows waiting, cancellation and persistent connection err
   await page.evaluate(()=>window.finishPick([]));
   await expect(page.locator('.modal')).toHaveCount(0);
   await expect(page.locator('#toast')).toContainText('선택을 취소');
-  await page.locator('[data-action=link-folder]').click();
+  await page.evaluate(()=>window.moaDesktop.pickFiles=async()=>{throw Error('도우미 연결 오류: 테스트')});
+  await page.locator('.toolbar [data-action=register]').click();
   await expect(page.locator('#connection-detail')).toContainText('도우미 연결 오류: 테스트');
   await expect(page.locator('.modal')).toContainText('모아 실행.cmd');
   expect(await page.evaluate(()=>window.pickCount)).toBe(1);
 });
-test('browser-only folder button explains how to activate original shortcuts', async ({page}) => {
-  await page.locator('[data-action=link-folder]').click();
+test('browser-only path button explains how to activate original shortcuts', async ({page}) => {
+  await page.locator('[data-action=path-shortcut]').click();
   await expect(page.locator('#connection-detail')).toContainText('미리보기 모드');
   await expect(page.locator('.modal')).toContainText('http://127.0.0.1:17843');
+});
+
+test('PDF hover renders the actual first page as an image', async ({page}) => {
+  const {readFile} = await import('node:fs/promises');
+  await page.locator('#file-input').setInputFiles({name:'first-page.pdf',mimeType:'application/pdf',buffer:await readFile('tests/fixtures/first-page.pdf')});
+  const card=page.locator('.file-open').filter({hasText:'first-page.pdf'});
+  await card.hover();
+  const image=page.locator('#hover-preview img[alt="PDF 첫 페이지 이미지"]');
+  await expect(image).toBeVisible();
+  await expect.poll(()=>image.evaluate(i=>i.complete&&i.naturalWidth>0)).toBe(true);
+  const pixel=await image.evaluate(i=>{const c=document.createElement('canvas');c.width=i.naturalWidth;c.height=i.naturalHeight;const x=c.getContext('2d');x.drawImage(i,0,0);return [...x.getImageData(20,20,1,1).data]});
+  expect(pixel[0]).toBeGreaterThan(240);expect(pixel[1]).toBeLessThan(20);
+});
+test('HWP and HWPX use stored first-page images rather than text substitutes', async ({page}) => {
+  const {readFile}=await import('node:fs/promises');
+  const CFB=await import('cfb');
+  const png=await readFile('tests/fixtures/first-page.png');
+  const hwp=CFB.utils.cfb_new();CFB.utils.cfb_add(hwp,'PrvImage',png);
+  const hwpx=new JSZip();hwpx.file('Preview/PrvImage.png',png);
+  for(const [name,buffer] of [['first.hwp',CFB.write(hwp,{type:'buffer'})],['first.hwpx',await hwpx.generateAsync({type:'nodebuffer'})]]) {
+    await upload(page,name,buffer);
+    const image=page.locator('#preview-body .page-preview');
+    await expect(image).toBeVisible();
+    await expect.poll(()=>image.evaluate(i=>i.complete&&i.naturalWidth)).toBe(120);
+    await expect(page.locator('#preview-body')).toContainText('저장된 첫 페이지 이미지');
+    await page.locator('#close-modal').click();
+  }
 });

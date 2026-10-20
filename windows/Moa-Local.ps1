@@ -13,6 +13,36 @@ if (Test-Path -LiteralPath $configFile) {
     $roots = @($saved.roots)
 }
 $supported = @('.hwp','.hwpx','.doc','.docx','.xls','.xlsx','.ppt','.pptx','.pdf','.png','.jpg','.jpeg','.gif','.webp','.bmp','.svg','.txt','.md','.csv','.json','.log','.odt','.ods','.odp')
+$jobs = @{}
+$sessionDirectory = Join-Path (Join-Path $DataDirectory 'jobs') ([guid]::NewGuid().ToString())
+[void][IO.Directory]::CreateDirectory($sessionDirectory)
+function Start-Worker([string]$Kind, [string]$Source = '') {
+    if (@($jobs.Values | Where-Object { -not $_.Process.HasExited }).Count -ge 3) { throw '다른 선택 창이나 미리보기가 작업 중입니다. 잠시 후 다시 시도해 주세요.' }
+    $id = [guid]::NewGuid().ToString()
+    $directory = Join-Path $sessionDirectory $id
+    [void][IO.Directory]::CreateDirectory($directory)
+    $executable = if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) { Join-Path $PSHOME 'powershell.exe' } else { Join-Path $PSHOME 'pwsh' }
+    $info = New-Object Diagnostics.ProcessStartInfo
+    $info.FileName = $executable; $info.UseShellExecute = $false; $info.CreateNoWindow = $true
+    $sta = if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) { '-STA ' } else { '' }
+    $resultArg = [Convert]::ToBase64String($utf8.GetBytes($directory))
+    $sourceArg = [Convert]::ToBase64String($utf8.GetBytes($Source))
+    $info.Arguments = '-NoLogo -NoProfile ' + $sta + '-ExecutionPolicy Bypass -File "' + (Join-Path $PSScriptRoot 'Moa-Worker.ps1') + '" -Kind ' + $Kind + ' -ResultBase64 ' + $resultArg
+    if ($sourceArg) { $info.Arguments += ' -SourceBase64 ' + $sourceArg }
+    $process = [Diagnostics.Process]::Start($info)
+    $jobs[$id] = @{ Process = $process; Directory = $directory; Kind = $Kind; Started = [datetime]::UtcNow; Consumed = $false }
+    return @{ id = $id }
+}
+function Get-Worker([string]$Id) {
+    if (-not $Id -or -not $jobs.ContainsKey($Id)) { throw '등록되지 않은 작업입니다.' }
+    $job = $jobs[$Id]
+    $limit = if ($job.Kind -eq 'select') { 180 } else { 45 }
+    if (-not $job.Process.HasExited -and ([datetime]::UtcNow - $job.Started).TotalSeconds -gt $limit) {
+        try { $job.Process.Kill() } catch {}
+        throw '선택 창 또는 첫 페이지 생성 시간이 초과되었습니다. 경로 붙여넣기 또는 원본 프로그램 열기를 사용해 주세요.'
+    }
+    return $job
+}
 function Save-Links {
     $json = @{ entries = $entries; roots = @($script:roots) } | ConvertTo-Json -Depth 6
     [IO.File]::WriteAllText($configFile + '.tmp', $json, $utf8)
@@ -157,7 +187,7 @@ try {
                 $headPosition = $html.IndexOf('<head>')
                 if ($headPosition -lt 0) { throw 'HTML 문서의 시작 부분을 찾지 못했습니다.' }
                 $html = $html.Insert($headPosition + 6, $injection)
-                Send-Response $stream 200 ($utf8.GetBytes($html)) 'text/html; charset=utf-8' @{'Content-Security-Policy'="default-src 'self' blob: data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; object-src 'none'"}
+                Send-Response $stream 200 ($utf8.GetBytes($html)) 'text/html; charset=utf-8' @{'Content-Security-Policy'="default-src 'self' blob: data:; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; object-src 'none'"}
                 continue
             }
             if ($method -ne 'POST' -or $headers['x-moa-token'] -cne $token -or $headers['content-type'] -notlike 'application/json*') {
@@ -176,7 +206,44 @@ try {
             $body = $utf8.GetString($bodyBytes) | ConvertFrom-Json
             switch ($route) {
                 '/api/status' {
-                    Send-Json $stream @{ version = '0.4.0'; folderCount = $script:roots.Count; folders = @($script:roots); apartment = [Threading.Thread]::CurrentThread.GetApartmentState().ToString() }
+                    Send-Json $stream @{ version = '0.5.0'; folderCount = $script:roots.Count; folders = @($script:roots); apartment = [Threading.Thread]::CurrentThread.GetApartmentState().ToString() }
+                }
+                '/api/select-start' { Send-Json $stream (Start-Worker 'select') }
+                '/api/preview-start' {
+                    $item = Resolve-Document ([string]$body.id)
+                    if ($item.Length -gt 83886080) { throw '80MB를 넘는 문서는 원본 프로그램에서 열어 주세요.' }
+                    Send-Json $stream (Start-Worker 'preview' $item.FullName)
+                }
+                '/api/job' {
+                    $job = Get-Worker ([string]$body.id)
+                    if ($job.Cancelled) { Send-Json $stream @{ files = @() }; break }
+                    $resultFile = Join-Path $job.Directory 'result.json'
+                    if (-not (Test-Path -LiteralPath $resultFile)) {
+                        if ($job.Process.HasExited) { throw '선택 또는 미리보기 작업이 종료되었습니다. 경로 붙여넣기로 연결해 주세요.' }
+                        Send-Json $stream @{ pending = $true }; break
+                    }
+                    $result = [IO.File]::ReadAllText($resultFile,$utf8) | ConvertFrom-Json
+                    if (-not $result.ok) { throw $result.error }
+                    if ($job.Kind -eq 'select') {
+                        if ($job.Consumed) { Send-Json $stream @{ files = @() }; break }
+                        $files = @(foreach ($path in @($result.paths)) { Register-Document $path })
+                        Save-Links; $job.Consumed = $true
+                        Send-Json $stream @{ files = $files }
+                    } else { Send-Json $stream @{ format = $result.format; source = $result.source } }
+                }
+                '/api/job-content' {
+                    $job = Get-Worker ([string]$body.id)
+                    if ($job.Kind -ne 'preview') { throw '미리보기 작업만 읽을 수 있습니다.' }
+                    $result = [IO.File]::ReadAllText((Join-Path $job.Directory 'result.json'),$utf8) | ConvertFrom-Json
+                    if (-not $result.ok -or $result.format -notin @('pdf','png')) { throw '미리보기 이미지가 준비되지 않았습니다.' }
+                    $type = if ($result.format -eq 'pdf') { 'application/pdf' } else { 'image/png' }
+                    Send-Response $stream 200 ([IO.File]::ReadAllBytes((Join-Path $job.Directory ('page.'+$result.format)))) $type
+                }
+                '/api/job-cancel' {
+                    $job = Get-Worker ([string]$body.id)
+                    $job.Cancelled = $true
+                    if (-not $job.Process.HasExited) { $job.Process.Kill() }
+                    Send-Json $stream @{ cancelled = $true }
                 }
                 '/api/paths' {
                     $paths = @($body.paths)
@@ -243,4 +310,8 @@ try {
             try { Send-Json $stream @{ error = $_.Exception.Message } 400 } catch {}
         } finally { $stream.Dispose(); $client.Close() }
     }
-} finally { $listener.Stop() }
+} finally {
+    $listener.Stop()
+    foreach ($job in $jobs.Values) { try { if (-not $job.Process.HasExited) { $job.Process.Kill() } } catch {} }
+    Remove-Item -LiteralPath $sessionDirectory -Recurse -Force -ErrorAction SilentlyContinue
+}

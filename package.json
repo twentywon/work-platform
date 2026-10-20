@@ -1,6 +1,6 @@
 {
   "name": "work-platform",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -20,9 +20,11 @@
     "test:local": "npm run build:html && node tests/local-helper.integration.mjs"
   },
   "dependencies": {
+    "cfb": "^1.2.2",
     "jszip": "^3.10.1",
     "lucide": "^0.468.0",
     "mammoth": "^1.9.0",
+    "pdfjs-dist": "^5.4.296",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

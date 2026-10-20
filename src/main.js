@@ -167,7 +167,7 @@ function render() {
 <button class="new-page" data-action="add-page">${icon("plus")}새 페이지 만들기</button>
 <div class="side-bottom"><div class="tip-card"><span class="tip-icon">${icon("sparkles")}</span><strong>생각을 펼쳐보세요</strong><p>메모부터 파일까지,<br>모든 업무를 나만의 공간에.</p><button data-action="help">모아 사용 가이드 ${icon("arrow-up-right")}</button></div><div class="local-label">${icon("hard-drive")}이 브라우저에 안전하게 보관</div><button class="profile" data-action="help"><span class="profile-avatar">나</span><span>나의 공간<small>개인 워크스페이스</small></span>${icon("circle-help")}</button></div></aside>
 <main><header class="topbar"><div class="breadcrumb">워크스페이스 ${icon("chevron-right")}<input id="page-title" aria-label="페이지 이름" value="${escape(p.title)}" maxlength="70"/></div><div class="top-actions"><button id="connection-status" data-action="connection" class="connection-status">${window.moaDesktop ? "PC 연결 도우미" : "미리보기 모드"}</button><span id="save-status">${icon("cloud-check")}모든 변경사항 저장됨</span><button class="icon-btn" data-action="help" title="사용 가이드">${icon("circle-help")}</button></div></header>
-<section class="toolbar" aria-label="삽입 도구모음"><div class="toolbar-group"><button data-add="text">${icon("type")}<span>텍스트</span></button><button data-add="note">${icon("sticky-note")}<span>메모</span></button><button data-add="checkbox">${icon("square-check")}<span>체크박스</span></button><div class="dropdown"><button data-menu="extras">${icon("circle-plus")}<span>더 삽입</span>${icon("chevron-down")}</button><div class="menu" id="extras-menu"><button data-action="media">${icon("image")}<span>미디어</span></button><button data-add="calendar">${icon("calendar-days")}<span>달력</span></button><button data-action="web">${icon("globe")}<span>인터넷 링크</span></button><button data-action="pagelink">${icon("notebook-tabs")}<span>페이지 링크</span></button></div></div><button data-add="table">${icon("table-2")}<span>표</span></button><div class="dropdown"><button data-menu="shapes">${icon("shapes")}<span>도형</span>${icon("chevron-down")}</button><div class="menu" id="shapes-menu"><button data-add="rect">${icon("square")}사각형</button><button data-add="circle">${icon("circle")}원</button></div></div><div class="dropdown"><button data-menu="lines">${icon("columns-2")}<span>구분선</span>${icon("chevron-down")}</button><div class="menu" id="lines-menu"><button data-add="hline">${icon("minus")}가로 구분선</button><button data-add="vline">${icon("move-vertical")}세로 구분선</button></div></div></div><span class="toolbar-divider"></span><button class="link-tool" data-action="register">${icon("link")}<span>파일 연결</span></button><button class="link-tool" data-action="link-folder">${icon("folder-open")}<span>연결 폴더</span></button><div class="toolbar-right"><span>가로폭 맞춤 · 격자 20px</span>${icon("lock-keyhole")}<button class="dimensions" data-action="dimensions">${p.width} × ${p.height}</button></div></section>
+<section class="toolbar" aria-label="삽입 도구모음"><div class="toolbar-group"><button data-add="text">${icon("type")}<span>텍스트</span></button><button data-add="note">${icon("sticky-note")}<span>메모</span></button><button data-add="checkbox">${icon("square-check")}<span>체크박스</span></button><div class="dropdown"><button data-menu="extras">${icon("circle-plus")}<span>더 삽입</span>${icon("chevron-down")}</button><div class="menu" id="extras-menu"><button data-action="media">${icon("image")}<span>미디어</span></button><button data-add="calendar">${icon("calendar-days")}<span>달력</span></button><button data-action="web">${icon("globe")}<span>인터넷 링크</span></button><button data-action="pagelink">${icon("notebook-tabs")}<span>페이지 링크</span></button></div></div><button data-add="table">${icon("table-2")}<span>표</span></button><div class="dropdown"><button data-menu="shapes">${icon("shapes")}<span>도형</span>${icon("chevron-down")}</button><div class="menu" id="shapes-menu"><button data-add="rect">${icon("square")}사각형</button><button data-add="circle">${icon("circle")}원</button></div></div><div class="dropdown"><button data-menu="lines">${icon("columns-2")}<span>구분선</span>${icon("chevron-down")}</button><div class="menu" id="lines-menu"><button data-add="hline">${icon("minus")}가로 구분선</button><button data-add="vline">${icon("move-vertical")}세로 구분선</button></div></div></div><span class="toolbar-divider"></span><button class="link-tool" data-action="register">${icon("link")}<span>파일 연결</span></button><button class="link-tool" data-action="path-shortcut">${icon("clipboard-paste")}<span>경로 붙여넣기</span></button><div class="toolbar-right"><span>가로폭 맞춤 · 격자 20px</span>${icon("lock-keyhole")}<button class="dimensions" data-action="dimensions">${p.width} × ${p.height}</button></div></section>
 
 <div class="canvas-viewport" id="viewport"><div class="canvas-space" id="canvas-space"><div class="canvas" id="canvas" style="width:${p.width}px;height:${p.height}px">${p.blocks.map(blockHTML).join("")}<div class="canvas-footer"><span>MADE FOR YOUR IDEAS</span><span>MOA WORKSPACE · ${String(state.pages.indexOf(p) + 1).padStart(2, "0")}</span></div></div></div><div id="selection-tools"></div></div>
 <footer class="bottom-bar"><span class="page-count">${state.pages.indexOf(p) + 1} / ${state.pages.length} 페이지</span><div class="pagination"><button data-action="prev-page" title="이전 페이지" ${state.pages.indexOf(p) === 0 ? "disabled" : ""}>${icon("chevron-left")}</button>${state.pages.map((x, i) => `<button data-page="${x.id}" class="${x.id === active ? "chosen" : ""}" aria-label="${i + 1}페이지">${i + 1}</button>`).join("")}<button data-action="next-page" title="다음 페이지" ${state.pages.indexOf(p) === state.pages.length - 1 ? "disabled" : ""}>${icon("chevron-right")}</button><span></span><button data-action="add-page" title="새 페이지">${icon("plus")}</button></div><div class="zoom-tools"><button data-action="zoom-out" title="축소">${icon("minus")}</button><button id="zoom-value" data-action="fit" title="화면에 맞추기">100%</button><button data-action="zoom-in" title="확대">${icon("plus")}</button><span></span><button data-action="fullscreen" title="전체 화면">${icon("maximize")}</button></div></footer></main>
@@ -572,10 +572,9 @@ async function action(a) {
   if (a === "media") { $("#media-input").click(); return; }
   if (a === "web" || a === "pagelink") return linkDialog(a);
   if (a === "register") return pickFiles();
-  if (a === "link-folder") {
-    if (window.moaDesktop?.setFolder) return pathDialog("folder");
-    if (!window.moaDesktop?.chooseFolder) return connectionHelp();
-    return nativePicker("folder");
+  if (a === "path-shortcut") {
+    if (!window.moaDesktop?.registerPaths) return connectionHelp();
+    return pathDialog("file");
   }
   if (a === "add-page") {
     const p = makePage(
@@ -617,7 +616,6 @@ async function action(a) {
     toast(`내 작업 공간에 ${state.pages.length}개의 페이지가 있습니다.`);
 }
 async function pickFiles() {
-  if (window.moaDesktop?.registerPaths) return pathDialog("file");
   if (window.moaDesktop) return nativePicker("file");
   if ("showOpenFilePicker" in window) {
     try {
@@ -639,13 +637,8 @@ async function pickFiles() {
   $("#file-input").click();
 }
 function pathDialog(kind, dropped = [], position, error = "") {
-  const folder = kind === "folder";
-  modal(folder ? "연결 폴더 지정" : "원본 파일 바로가기 연결", `<form id="path-form" class="insert-form"><p>${folder ? "탐색기에서 업무 폴더를 열고 주소 표시줄을 클릭해 경로를 복사한 뒤 아래에 붙여넣으세요. 한 번 지정하면 그 폴더 안의 파일을 선택하거나 보드에 끌어 놓아 바로 연결할 수 있습니다." : "탐색기에서 파일을 선택하고 Shift+마우스 오른쪽 클릭 → ‘경로로 복사’를 누르세요. 아래에 붙여넣으면 그 원본 위치를 연결합니다. 여러 파일 경로도 한 줄에 하나씩 입력할 수 있습니다."}</p>${!folder ? `<div class="event-actions"><button type="button" class="secondary-btn" id="browser-shortcut-pick">파일 선택</button><button type="button" class="secondary-btn" id="set-shortcut-folder">연결 폴더 지정</button></div><p class="muted">파일 선택·끌어 놓기는 연결 폴더 안의 원본을 찾습니다. 폴더 지정 없이 연결하려면 아래에 파일 전체 경로를 붙여넣으세요.</p>` : ""}${dropped.length ? `<p>선택한 파일: ${escape(dropped.map(f => f.name).join(", "))}</p>` : ""}<label>${folder ? "폴더 전체 경로" : "파일 전체 경로"}<textarea name="paths" rows="${folder ? 2 : 4}" required placeholder="${folder ? "탐색기 주소 표시줄에서 복사한 폴더 경로" : "탐색기의 ‘경로로 복사’ 결과를 붙여넣으세요"}"></textarea></label><p id="path-error" role="alert">${escape(error)}</p><button type="submit" class="primary-btn" id="save-path">${folder ? "폴더 연결" : "바로가기 추가"}</button><button type="button" class="secondary-btn" id="legacy-picker">Windows 선택 창 사용 (선택 사항)</button><div id="linked-folders" class="muted"></div></form>`);
-  $("#legacy-picker").onclick = () => nativePicker(folder ? "folder" : "file");
-  if (!folder) {
-    $("#browser-shortcut-pick").onclick = () => $("#file-input").click();
-    $("#set-shortcut-folder").onclick = () => pathDialog("folder", dropped, position);
-  }
+  modal("원본 파일 경로 붙여넣기", `<form id="path-form" class="insert-form"><p>탐색기에서 파일을 선택하고 Shift+마우스 오른쪽 클릭 → ‘경로로 복사’를 누르세요. 아래에 붙여넣으면 그 원본 위치를 연결합니다. 여러 파일 경로도 한 줄에 하나씩 입력할 수 있습니다.</p>${dropped.length ? `<p>선택한 파일: ${escape(dropped.map(f => f.name).join(", "))}</p>` : ""}<label>파일 전체 경로<textarea name="paths" rows="4" required placeholder="탐색기의 ‘경로로 복사’ 결과를 붙여넣으세요"></textarea></label><p id="path-error" role="alert">${escape(error)}</p><button type="submit" class="primary-btn" id="save-path">바로가기 추가</button><button type="button" class="secondary-btn" id="legacy-picker">Windows 파일 선택 창 사용</button><div id="linked-folders" class="muted"></div></form>`);
+  $("#legacy-picker").onclick = () => nativePicker("file");
   $("#path-form").onsubmit = async e => {
     e.preventDefault();
     const form = e.target;
@@ -655,17 +648,9 @@ function pathDialog(kind, dropped = [], position, error = "") {
     try {
       const paths = form.elements.paths.value.split(/\r?\n/).map(p => p.trim().replace(/^"(.*)"$/, "$1")).filter(Boolean);
       if (!paths.length) throw Error("원본의 전체 경로를 입력해 주세요.");
-      if (folder) {
-        if (paths.length !== 1) throw Error("폴더 경로는 한 번에 하나씩 추가해 주세요.");
-        const result = await window.moaDesktop.setFolder(paths[0]);
-        if (form.isConnected) closeModal();
-        if (dropped.length) await registerFiles(dropped, position);
-        else toast(`폴더 연결됨: ${result.path} · 파일을 보드로 끌어 놓으세요.`);
-      } else {
-        const records = await window.moaDesktop.registerPaths(paths);
-        if (form.isConnected) closeModal();
-        await registerNativeRecords(records, position);
-      }
+      const records = await window.moaDesktop.registerPaths(paths);
+      if (form.isConnected) closeModal();
+      await registerNativeRecords(records, position);
     } catch (error) {
       if (form.isConnected) { $("#path-error").textContent = error.message; button.disabled = false; }
     }
@@ -673,41 +658,42 @@ function pathDialog(kind, dropped = [], position, error = "") {
   if (window.moaDesktop.status) {
     const display = $("#linked-folders");
     window.moaDesktop.status().then(info => {
-      if (display.isConnected) display.textContent = info.folders?.length ? `연결된 폴더: ${info.folders.join(" · ")}` : "아직 지정한 연결 폴더가 없습니다.";
+      if (display.isConnected) display.textContent = `도우미 v${info.version} · 폴더 지정 없이 파일 경로만 연결합니다.`;
     }).catch(e => { if (display.isConnected) display.textContent = e.message; });
   }
   $('[name="paths"]').focus();
 }
-async function nativePicker(kind) {
+async function nativePicker(kind, position, dropped = []) {
   if (pickerPending) return toast("이미 선택 창을 요청했습니다. Windows 선택 창을 확인해 주세요.");
   pickerPending = true;
-  const label = kind === "folder" ? "폴더" : "파일";
-  modal(`${label} 선택 창 열기`, `<div class="connection-help" id="native-picker-wait"><p>Windows ${label} 선택 창을 요청했습니다.</p><p>브라우저 앞에 뜨는 창에서 ${label}을 선택해 주세요. 보이지 않으면 작업 표시줄 또는 <strong>Alt+Tab</strong>에서 ‘모아’ 선택 창을 확인해 주세요.</p><p class="muted">창을 취소하면 이 안내가 닫힙니다. 연결 오류가 발생하면 이 화면에 표시됩니다.</p></div>`);
+  const label = "파일";
+  modal(`${label} 선택 창 열기`, `<div class="connection-help" id="native-picker-wait"><p>Windows ${label} 선택 창을 요청했습니다.</p><p>브라우저 앞에 뜨는 창에서 ${label}을 선택해 주세요. 보이지 않으면 작업 표시줄 또는 <strong>Alt+Tab</strong>에서 ‘모아’ 선택 창을 확인해 주세요.</p><p class="muted">폴더를 미리 지정할 필요가 없습니다. ${dropped.length ? `끌어 놓은 파일(${escape(dropped.map(f => f.name).join(", "))})의 원본을 선택해 주세요.` : ""}</p>${window.moaDesktop.registerPaths ? '<button class="secondary-btn" id="picker-path-fallback">선택 창 대신 원본 경로 붙여넣기</button>' : ""}${window.moaDesktop.cancelSelection ? '<button class="secondary-btn" id="picker-cancel">선택 취소</button>' : ""}</div>`);
+  if ($("#picker-cancel")) $("#picker-cancel").onclick = async () => {
+    try { await window.moaDesktop.cancelSelection(); } catch {}
+    if ($("#native-picker-wait")) closeModal();
+  };
+  if ($("#picker-path-fallback")) $("#picker-path-fallback").onclick = async () => {
+    try { await window.moaDesktop.cancelSelection?.(); } catch {}
+    pathDialog("file", [], position);
+  };
   try {
-    if (kind === "folder") {
-      const result = await window.moaDesktop.chooseFolder();
-      if ($("#native-picker-wait")) closeModal();
-      if (result.path) toast(`연결 폴더: ${result.path} · 이 폴더의 파일을 보드로 끌어 놓으세요.`);
-      else toast("폴더 선택을 취소했습니다.");
-    } else {
-      const records = await window.moaDesktop.pickFiles();
-      if ($("#native-picker-wait")) closeModal();
-      await registerNativeRecords(records);
-      if (!records.length) toast("파일 선택을 취소했습니다.");
-    }
+    const records = await window.moaDesktop.pickFiles();
+    if ($("#native-picker-wait")) closeModal();
+    await registerNativeRecords(records, position);
+    if (!records.length) toast("파일 선택을 취소했습니다.");
   } catch (error) {
     connectionHelp(error.message);
   } finally { pickerPending = false; }
 }
 async function connectionHelp(error) {
   const native = !!window.moaDesktop;
-  modal(error ? "파일 연결을 완료하지 못했습니다" : "PC 파일 연결 상태", `<div class="connection-help"><p id="connection-detail" role="status">${error ? escape(error) : native ? "PC 연결 도우미로 실행 중입니다." : "현재는 HTML 미리보기 모드입니다. 원본 바로가기는 Windows 연결 도우미로 실행해야 합니다."}</p><ol><li>열려 있는 기존 모아 연결 도우미 창을 닫으세요.</li><li>최신 ZIP을 압축 해제하고 <strong>모아 실행.cmd</strong>를 실행하세요.</li><li>도우미 창을 열어 둔 채 브라우저 주소가 <strong>http://127.0.0.1:17843</strong>인지 확인하세요.</li><li>이 화면을 새로고침하고 파일 연결 또는 연결 폴더를 다시 누르세요.</li></ol><p>선택 창이 보이지 않으면 <strong>Alt+Tab</strong>으로 ‘모아’ 창을 확인해 주세요. 도우미 창에 오류 문구가 있다면 그 내용으로 원인을 확인할 수 있습니다.</p><button class="secondary-btn" id="connection-reload">이 화면 새로고침</button></div>`);
+  modal(error ? "파일 연결을 완료하지 못했습니다" : "PC 파일 연결 상태", `<div class="connection-help"><p id="connection-detail" role="status">${error ? escape(error) : native ? "PC 연결 도우미로 실행 중입니다." : "현재는 HTML 미리보기 모드입니다. 원본 바로가기는 Windows 연결 도우미로 실행해야 합니다."}</p><ol><li>열려 있는 기존 모아 연결 도우미 창을 닫으세요.</li><li>최신 ZIP을 압축 해제하고 <strong>모아 실행.cmd</strong>를 실행하세요.</li><li>도우미 창을 열어 둔 채 브라우저 주소가 <strong>http://127.0.0.1:17843</strong>인지 확인하세요.</li><li>이 화면을 새로고침하고 파일 연결 또는 경로 붙여넣기를 다시 누르세요.</li></ol><p>선택 창이 보이지 않으면 <strong>Alt+Tab</strong>으로 ‘모아’ 창을 확인해 주세요. 도우미 창에 오류 문구가 있다면 그 내용으로 원인을 확인할 수 있습니다.</p><button class="secondary-btn" id="connection-reload">이 화면 새로고침</button></div>`);
   $("#connection-reload").onclick = () => location.reload();
   const detail = $("#connection-detail");
   if (!error && window.moaDesktop?.status && !pickerPending) {
     try {
       const info = await window.moaDesktop.status();
-      if (detail.isConnected) detail.textContent = `연결 정상 · 도우미 v${info.version} · 연결 폴더 ${info.folderCount}개`;
+      if (detail.isConnected) detail.textContent = `연결 정상 · 도우미 v${info.version} · 원본 파일 선택 가능`;
     } catch (e) { if (detail.isConnected) detail.textContent = e.message; }
   }
 }
@@ -743,6 +729,7 @@ async function registerNativeRecords(records, position) {
 }
 async function registerFiles(items, position) {
   if (!items.length) return;
+  if (window.moaDesktop?.cancelSelection) return nativePicker("file", position, items);
   if (window.moaDesktop) {
     try {
       await registerNativeRecords(
@@ -750,7 +737,7 @@ async function registerFiles(items, position) {
       );
     } catch (e) {
       if (window.moaDesktop.registerPaths) pathDialog("file", items, position, e.message);
-      else toast(e.message || "파일 위치를 연결하지 못했습니다. 연결 폴더 또는 파일 연결 버튼을 사용해 주세요.");
+      else toast(e.message || "파일 위치를 연결하지 못했습니다. 파일 연결 또는 경로 붙여넣기를 사용해 주세요.");
     }
     return;
   }
@@ -830,7 +817,7 @@ async function showHover(target) {
   el.style.left =
     Math.max(12, Math.min(rect.left, window.innerWidth - 350)) + "px";
   el.style.top =
-    Math.max(12, Math.min(rect.bottom + 10, window.innerHeight - 300)) + "px";
+    Math.max(12, Math.min(rect.bottom + 10, window.innerHeight - 370)) + "px";
   el.innerHTML = '<div class="preview-loading">미리보기를 불러오는 중…</div>';
   try {
     const record = await recordFor(target.dataset.file);
@@ -852,14 +839,16 @@ async function showHover(target) {
   }
 }
 function previewHTML(data, small = false) {
+  if (data.type === "page-image")
+    return `<img class="page-preview" src="${data.url}" alt="${data.savedPreview ? "저장된 문서 미리보기" : "첫 페이지 이미지 미리보기"}"/><div class="preview-source">${escape(data.source)}</div>`;
   if (data.type === "image")
     return `<img class="preview-image" src="${data.url}" alt="파일 미리보기"/>`;
   if (data.type === "pdf")
     return small
-      ? `<div class="pdf-hover">${icon("file-text")}<strong>PDF 문서</strong><span>클릭하여 문서 미리보기</span></div>`
+      ? data.firstPage ? `<img class="page-preview" src="${data.firstPage}" alt="PDF 첫 페이지 이미지"/><div class="preview-source">PDF 첫 페이지</div>` : `<div class="pdf-hover">${icon("file-text")}<strong>PDF 문서</strong><span>${escape(data.imageUnavailable || "클릭하여 문서 미리보기")}</span></div>`
       : `<iframe class="pdf-frame" src="${data.url}" title="PDF 미리보기"></iframe>`;
   if (data.type === "sheets")
-    return `<div class="sheet-preview">${data.sheets
+    return `${data.imageUnavailable ? `<div class="preview-fallback">첫 페이지 이미지를 표시하지 못해 표 데이터로 표시합니다. ${escape(data.imageUnavailable)}</div>` : ""}<div class="sheet-preview">${data.sheets
       .slice(0, small ? 1 : 100)
       .map(
         (s) =>
@@ -872,7 +861,7 @@ function previewHTML(data, small = false) {
             .join("")}</table></div>`,
       )
       .join("")}</div>`;
-  return `<div class="text-preview ${data.type === "unsupported" ? "unsupported" : ""}">${escape(small ? data.text.slice(0, 600) : data.text)}</div>`;
+  return `${data.imageUnavailable ? `<div class="preview-fallback">첫 페이지 이미지를 표시하지 못해 텍스트로 표시합니다. ${escape(data.imageUnavailable)}</div>` : ""}<div class="text-preview ${data.type === "unsupported" ? "unsupported" : ""}">${escape(small ? data.text.slice(0, 600) : data.text)}</div>`;
 }
 function modal(title, body, wide = false) {
   hideHover();
@@ -910,10 +899,11 @@ async function openPreview(id) {
   }
   modal(
     record.name,
-    `<div class="preview-info"><span>${record.mode === "desktop" ? escape(record.path) : record.mode === "linked" ? "원본 파일 연결 · 변경된 내용 반영" : "등록 시점의 파일 사본"}</span><button class="secondary-btn" id="download-file">${icon("download")}파일 내려받기</button></div><div id="preview-body" class="preview-body">미리보기를 불러오는 중…</div><p class="preview-caption">${!window.moaDesktop ? "HTML 버전에서는 연결된 원본을 읽어 미리보기로 표시합니다. PC의 기본 연결 프로그램을 직접 실행할 수는 없습니다. " : ""}문서 미리보기는 텍스트·데이터 중심으로 표시됩니다. 원본의 서식과 배치는 다를 수 있습니다.</p>`,
+    `<div class="preview-info"><span>${record.mode === "desktop" ? escape(record.path) : record.mode === "linked" ? "원본 파일 연결 · 변경된 내용 반영" : "등록 시점의 파일 사본"}</span><button class="secondary-btn" id="download-file">${icon(record.mode === "desktop" ? "external-link" : "download")}${record.mode === "desktop" ? "원본 프로그램으로 열기" : "파일 내려받기"}</button></div><div id="preview-body" class="preview-body">미리보기를 불러오는 중…</div><p class="preview-caption">${!window.moaDesktop ? "HTML 버전에서는 연결된 원본을 읽어 미리보기로 표시합니다. PC의 기본 연결 프로그램을 직접 실행할 수는 없습니다. " : ""}PDF는 첫 페이지를 이미지로 표시합니다. 한글·Office는 저장된 미리보기 또는 설치된 프로그램을 사용하며, 이미지 생성이 지원되지 않으면 텍스트·표로 표시합니다.</p>`,
     true,
   );
   $("#download-file").onclick = async () => {
+    if (record.mode === "desktop") return openRegisteredFile(id);
     try {
       const file = await getFile(record);
       const url = URL.createObjectURL(file);
@@ -1006,7 +996,7 @@ function calendarEvent(block, date) {
 function help() {
   modal(
     "모아 사용 가이드",
-    `<div class="help-body"><div class="help-intro">업무를 가로로 넓게 펼쳐보세요.</div><p>상단 도구모음에서 메모, 표, 도형과 가로·세로 구분선을 추가합니다. 개체를 선택한 뒤 이동·크기 손잡이를 드래그하면 20px 격자에 맞춥니다. 회전 손잡이는 15도 간격이며 아래 도구모음에서 각도를 입력하거나 90도씩 회전할 수 있습니다.</p><h3>새 블록 삽입</h3><p>체크박스에는 할 일과 완료 상태를 기록합니다. 더 삽입 메뉴에서 미디어·인터넷 링크·달력·페이지 링크를 추가하세요. 이미지와 GIF는 보드 안에 표시되고 영상은 재생 버튼으로 볼 수 있습니다. 미디어는 브라우저에 사본으로 저장하며 파일당 100MB까지 지원합니다. 달력 날짜를 누르면 일정 메모를 저장할 수 있습니다. 인터넷 링크는 새 탭으로, 페이지 링크는 해당 보드 페이지로 이동합니다.</p><h3>원본 파일을 바로가기로 연결</h3><p>Windows에서는 ZIP을 풀고 <strong>모아 실행.cmd</strong>를 실행하세요. 연결 도우미 창을 열어 두면 파일 카드 클릭 시 한글·Excel 등 PC 기본 프로그램으로 그 원본을 엽니다. 파일 내용을 내려받거나 사본으로 저장하지 않습니다.</p><p>파일 연결에서 탐색기의 ‘경로로 복사’ 결과를 붙여넣어 바로가기를 만드세요. 파일 선택·드래그를 사용하려면 연결 폴더 경로를 먼저 지정하세요. 드래그하려면 먼저 연결 폴더를 지정하고 그 안의 파일을 끌어 놓으세요. 하위 폴더도 찾습니다. 같은 이름·크기·수정 시각을 가진 후보가 여러 개면 파일 연결 버튼으로 정확한 원본을 선택해야 합니다. 원본을 이동하거나 삭제하면 다시 연결해 주세요.</p><p>모아.html만 직접 열면 브라우저 미리보기 모드이며 PC 기본 프로그램 실행은 지원하지 않습니다. 지원 브라우저에서는 원본 핸들을, 그 외에는 등록 시점의 사본을 보관한다고 표시합니다.</p><h3>미리보기</h3><p>마우스를 올리거나 카드의 눈 버튼을 누르세요. 이미지, PDF, DOCX 본문, XLS/XLSX 셀, PPTX와 HWPX 텍스트를 표시합니다. HWP/DOC/PPT는 원본 프로그램에서 열어 주세요. 미리보기는 원본의 모든 서식을 재현하지 않습니다.</p><h3>페이지와 저장</h3><p>페이지 크기는 고정하고 가로폭에 맞춰 표시합니다. 긴 보드는 세로로 스크롤합니다. 작은 페이지 이름은 위쪽 경로에서 수정하고 아래 숫자 버튼으로 페이지를 이동하세요.</p><p>작업은 같은 브라우저에 자동 저장됩니다. HTML 직접 실행과 연결 도우미 화면은 저장 공간이 다릅니다. 사이트 데이터를 지우면 작업이 사라집니다. 클라우드 동기화는 제공하지 않습니다.</p></div>`,
+    `<div class="help-body"><div class="help-intro">업무를 가로로 넓게 펼쳐보세요.</div><p>상단 도구모음에서 메모, 표, 도형과 가로·세로 구분선을 추가합니다. 개체를 선택한 뒤 이동·크기 손잡이를 드래그하면 20px 격자에 맞춥니다. 회전 손잡이는 15도 간격이며 아래 도구모음에서 각도를 입력하거나 90도씩 회전할 수 있습니다.</p><h3>새 블록 삽입</h3><p>체크박스에는 할 일과 완료 상태를 기록합니다. 더 삽입 메뉴에서 미디어·인터넷 링크·달력·페이지 링크를 추가하세요. 이미지와 GIF는 보드 안에 표시되고 영상은 재생 버튼으로 볼 수 있습니다. 미디어는 브라우저에 사본으로 저장하며 파일당 100MB까지 지원합니다. 달력 날짜를 누르면 일정 메모를 저장할 수 있습니다. 인터넷 링크는 새 탭으로, 페이지 링크는 해당 보드 페이지로 이동합니다.</p><h3>원본 파일을 바로가기로 연결</h3><p>Windows에서는 ZIP을 풀고 <strong>모아 실행.cmd</strong>를 실행하세요. 연결 도우미 창을 열어 두면 파일 카드 클릭 시 한글·Excel 등 PC 기본 프로그램으로 그 원본을 엽니다. 파일 내용을 내려받거나 사본으로 저장하지 않습니다.</p><p>파일 연결에서 Windows 선택 창으로 원본을 고르거나 경로 붙여넣기를 사용하세요. 폴더를 미리 지정할 필요가 없습니다. 브라우저에 파일을 끌어 놓으면 Windows 선택 창에서 해당 원본을 한 번 확인합니다. 원본을 이동하거나 삭제하면 다시 연결해 주세요.</p><p>모아.html만 직접 열면 브라우저 미리보기 모드이며 PC 기본 프로그램 실행은 지원하지 않습니다. 지원 브라우저에서는 원본 핸들을, 그 외에는 등록 시점의 사본을 보관한다고 표시합니다.</p><h3>미리보기</h3><p>마우스를 올리거나 카드의 눈 버튼을 누르세요. PDF는 실제 첫 페이지를 이미지로 표시합니다. HWP/HWPX는 저장된 미리보기를, Word·Excel·PowerPoint는 저장된 이미지 또는 설치된 Office를 사용합니다. 미리보기가 지원되지 않으면 이유를 표시하고 텍스트·표로 전환합니다.</p><h3>페이지와 저장</h3><p>페이지 크기는 고정하고 가로폭에 맞춰 표시합니다. 긴 보드는 세로로 스크롤합니다. 작은 페이지 이름은 위쪽 경로에서 수정하고 아래 숫자 버튼으로 페이지를 이동하세요.</p><p>작업은 같은 브라우저에 자동 저장됩니다. HTML 직접 실행과 연결 도우미 화면은 저장 공간이 다릅니다. 사이트 데이터를 지우면 작업이 사라집니다. 클라우드 동기화는 제공하지 않습니다.</p></div>`,
   );
 }
 async function fileLibrary() {

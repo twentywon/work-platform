@@ -7,27 +7,22 @@ const html=await readFile(path.join(root,'모아.html'));
 zip.file('모아.html',html);
 zip.file('모아 실행.cmd',await readFile(path.join(root,'windows/Start-Moa.cmd')));
 zip.file('Moa-Local.ps1',await readFile(path.join(root,'windows/Moa-Local.ps1')));
-zip.file('사용방법.txt',`모아 v0.4 · Windows 10/11
+zip.file('Moa-Worker.ps1',await readFile(path.join(root,'windows/Moa-Worker.ps1')));
+zip.file('사용방법.txt',`모아 v0.5 · Windows 10/11
 
-1. ZIP을 반드시 압축 해제하세요.
-2. 이전 모아 연결 도우미 창이 열려 있으면 먼저 닫고, 새 폴더의 모아 실행.cmd를 더블클릭하세요. 브라우저가 자동으로 열립니다. Node.js나 EXE 설치가 필요하지 않습니다.
-3. 함께 뜨는 연결 도우미 창은 열어 두세요. 창을 닫으면 원본 파일 열기가 중단됩니다. 종료는 Ctrl+C 또는 창 닫기입니다.
-4. 파일 연결을 누른 뒤 탐색기의 원본 파일을 Shift+우클릭 → 경로로 복사하고 붙여넣으세요. 여러 파일은 한 줄에 경로 하나씩 입력합니다. 카드 클릭 시 PC 기본 연결 프로그램(한글, Excel 등)으로 원본을 엽니다. 파일을 내려받거나 사본을 만들지 않습니다.
-5. 파일 선택·드래그를 사용하려면 연결 폴더에 탐색기 주소 표시줄에서 복사한 폴더 전체 경로를 한 번 붙여넣으세요. Windows 선택 창을 띄우지 않아도 됩니다. 그 폴더와 하위 폴더의 파일을 보드로 끌어 놓으면 놓은 위치에 바로가기를 만듭니다. 이름·크기·수정 시각으로 원본을 찾습니다. 후보가 여러 개면 임의로 열지 않으며 파일 연결 버튼으로 정확한 원본을 선택하세요. 여러 연결 폴더를 추가할 수 있습니다. 폴더를 이동했으면 새 위치를 추가하세요.
-6. 손잡이로 개체를 이동·크기 조절하면 20px 격자에 맞춥니다. 회전 손잡이는 15도 간격, 선택 도구모음은 각도 직접 입력 및 90도 회전을 지원합니다.
-7. 체크박스 버튼에서 할 일을 추가하고 완료 상태를 체크하세요. 더 삽입 메뉴에는 미디어, 달력, 인터넷 링크, 페이지 링크가 있습니다.
-8. 미디어는 이미지·GIF·영상 파일을 선택해 보드 안에 표시합니다. 이 미디어는 브라우저에 저장되는 사본(파일당 100MB 이하)입니다. 원본 바로가기와는 별개입니다. MP4(H.264) 또는 WebM 영상을 권장합니다.
-9. 달력에서 월을 선택하고 날짜를 눌러 일정을 기록합니다. 인터넷 링크는 http/https 주소를 새 탭에서 열며 페이지 링크는 보드의 다른 페이지로 이동합니다.
-10. 보드는 가로폭에 맞춰 표시하며 세로는 스크롤합니다. 위쪽 경로에서 작은 페이지 이름을 변경할 수 있습니다.
+1. ZIP을 압축 해제하세요. 이전 도우미 창은 먼저 닫으세요.
+2. 모아 실행.cmd를 실행하고 도우미 창을 열어 두세요. EXE나 Node.js 설치는 필요하지 않습니다.
+3. 파일 연결 → Windows에서 원본 파일 선택 → 카드 클릭으로 기본 프로그램에서 원본 열기 순서입니다. 폴더를 미리 지정하지 않습니다. 원본 문서는 사본으로 저장하거나 다운로드하지 않습니다.
+4. 브라우저로 끌어온 파일은 원본 경로를 숨기므로 Windows 선택 창에서 원본을 한 번 확인합니다. 선택 창이 보이지 않으면 Alt+Tab에서 모아 창을 확인하거나 경로 붙여넣기를 사용하세요. 탐색기에서 파일을 Shift+우클릭 → 경로로 복사 후 붙여넣으면 됩니다.
+5. 미리보기는 PDF 첫 페이지 렌더링, HWP/HWPX의 저장된 이미지, Office 저장 미리보기 또는 설치된 Word/Excel/PowerPoint의 읽기 전용 내보내기를 사용합니다. Excel은 첫 시트의 첫 인쇄 페이지, PowerPoint는 첫 슬라이드입니다.
+6. 한글 문서에 저장된 이미지가 없으면 Windows 문서 미리보기 제공자를 시도합니다. 이미지 생성이 안 되면 이유와 함께 텍스트·표로 표시합니다. 한글·Office 설치만으로 모든 파일의 첫 페이지 이미지가 보장되지는 않습니다. 저장된 미리보기는 저장 당시 이미지입니다.
+7. 선택 창과 Office 변환은 별도 작업으로 실행되어 도우미를 막지 않습니다. 변환은 45초 제한이며 PDF/PNG 임시 결과만 만들고 원본을 수정하지 않습니다. Windows의 실제 선택 창과 Office COM 실행은 사용자 PC에서 확인해야 합니다.
+8. 체크박스, 미디어, 달력, 인터넷 링크, 페이지 링크는 도구모음에서 추가합니다. 보드 미디어는 표시용 사본으로 브라우저에 저장합니다.
 
-선택 창이 나타나지 않으면 Alt+Tab으로 모아 창을 확인하세요. 상단 PC 연결 도우미 버튼에서 도우미 버전과 연결 상태를 확인할 수 있습니다. 오류가 발생하면 화면과 도우미 콘솔에 표시합니다.
+작업은 같은 브라우저의 http://127.0.0.1:17843 에 저장됩니다. HTML 직접 실행과는 저장 공간이 다릅니다. 이전 버전의 바로가기와 보드는 같은 브라우저에서 유지됩니다.
+모아.html만 직접 열면 브라우저 미리보기 모드이며 원본 기본 프로그램 실행과 설치된 Office 변환은 모아 실행.cmd가 필요합니다.
 
-주의: 모아.html만 직접 열면 브라우저 미리보기 모드입니다. 원본을 PC 프로그램에서 열려면 모아 실행.cmd를 사용하세요. 회사 정책이 PowerShell 실행을 차단하면 연결 도우미를 사용할 수 없으며 IT 담당자 확인이 필요합니다.
-
-작업은 같은 브라우저의 http://127.0.0.1:17843 에 저장됩니다. 기존 HTML을 직접 열어 작성한 데이터와는 저장 공간이 다릅니다. 사이트 데이터를 지우지 마세요. 원본 경로와 연결 폴더는 PC의 %LOCALAPPDATA%\\MoaWeb\\links.json 에 저장됩니다. 원본을 이동·삭제하면 다시 연결하세요.
-이 PC 밖으로 파일을 업로드하지 않습니다. 같은 PC의 브라우저에서만 연결 도우미에 접근할 수 있습니다.
-
-개발용소스에서 npm ci 후 npm run package:html로 수정본을 만듭니다. Windows의 실제 한글/Office 실행은 사용자 PC에서 확인해야 합니다.
+개발용소스에서 npm ci 후 npm run package:html로 수정본을 만듭니다.
 `);
 const items=['windows','src','desktop','build','tests','scripts','index.html','package.json','package-lock.json','README.md','AGENTS.md','.gitattributes','.gitignore','vite.config.js','vite.html.config.js','playwright.config.js','playwright.html.config.js','electron-builder.yml'];
 async function add(relative){
@@ -46,6 +41,6 @@ await mkdir(path.dirname(out),{recursive:true});
 const buffer=await zip.generateAsync({type:'nodebuffer',compression:'DEFLATE',compressionOptions:{level:6}});
 await writeFile(out,buffer);
 const verified=await JSZip.loadAsync(await readFile(out),{checkCRC32:true});
-if(!verified.file('모아.html')||!verified.file('개발용소스/src/main.js'))throw Error('ZIP contents missing');
+if(!verified.file('모아.html')||!verified.file('개발용소스/src/main.js')||!verified.file('Moa-Worker.ps1')||!verified.file('Moa-Local.ps1')||!verified.file('모아 실행.cmd'))throw Error('ZIP contents missing');
 if(!Buffer.from(await verified.file('모아.html').async('uint8array')).equals(html))throw Error('HTML verification failed');
 console.log(`ZIP created and verified: ${out} (${buffer.length} bytes)`);

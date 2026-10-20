@@ -11,7 +11,7 @@ if (window.moaLocal && !window.moaDesktop) {
         body: JSON.stringify(body || {}),
       });
       if (!response.ok) {
-        if (['status', 'paths', 'folder-path'].includes(route) && response.status === 404) throw new Error('이전 버전 연결 도우미가 실행 중입니다. 기존 도우미 창을 닫고 최신 ZIP의 모아 실행.cmd를 실행한 뒤 새로고침해 주세요.');
+        if (['status', 'paths', 'folder-path', 'select-start', 'preview-start'].includes(route) && response.status === 404) throw new Error('이전 버전 연결 도우미가 실행 중입니다. 기존 도우미 창을 닫고 최신 ZIP의 모아 실행.cmd를 실행한 뒤 새로고침해 주세요.');
         let message = '연결 도우미에 접근할 수 없습니다. 모아 실행.cmd를 다시 실행해 주세요.';
         try { message = (await response.json()).error || message; } catch {}
         throw new Error(message);
@@ -24,13 +24,43 @@ if (window.moaLocal && !window.moaDesktop) {
     } finally { clearTimeout(timer); }
   };
   const ready = async () => (await request('status', {}, 4000)).json();
+  const runJob = async (route, body) => {
+    const job = await (await request(route, body)).json();
+    if(route === 'select-start') {
+      window.moaLocal.selectionJob = job.id;
+      if(window.moaLocal.selectionCancelled) {
+        await request('job-cancel', {id:job.id});
+        window.moaLocal.selectionJob = null;
+        return {files:[]};
+      }
+    }
+    try {
+      for (let attempt = 0; attempt < 600; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        const result = await (await request('job', {id:job.id})).json();
+        if (!result.pending) return { ...result, jobId:job.id };
+      }
+      throw new Error('작업 시간이 초과되었습니다. 경로 붙여넣기로 원본을 연결해 주세요.');
+    } finally { if(window.moaLocal.selectionJob === job.id) window.moaLocal.selectionJob = null; }
+  };
   window.moaDesktop = {
     status: ready,
     async registerPaths(paths) { return (await (await request('paths', { paths })).json()).files; },
     async setFolder(path) { return (await request('folder-path', { path })).json(); },
     async pickFiles() {
+      window.moaLocal.selectionCancelled = false;
       await ready();
-      return (await (await request('pick', {}, 180000)).json()).files;
+      if(window.moaLocal.selectionCancelled) return [];
+      return (await runJob('select-start', {})).files;
+    },
+    async cancelSelection() {
+      window.moaLocal.selectionCancelled = true;
+      if(window.moaLocal.selectionJob) await request('job-cancel', {id:window.moaLocal.selectionJob});
+    },
+    async firstPage(id) {
+      const result = await runJob('preview-start', {id});
+      const response = await request('job-content', {id:result.jobId});
+      return {...result, bytes:new Uint8Array(await response.arrayBuffer())};
     },
     async chooseFolder() {
       await ready();
