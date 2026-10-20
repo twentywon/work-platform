@@ -1,3 +1,6 @@
 windows/*.ps1 text eol=crlf
 windows/*.cmd text eol=crlf
 *.pdf binary
+
+windows/*.vbs text eol=crlf
+*.dll binary

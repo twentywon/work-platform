@@ -44,3 +44,12 @@ test("rotated objects remain entirely within the fixed board", () => {
   assert.ok(b.x + b.w / 2 - half > -0.001);
   assert.ok(b.y + b.h / 2 + half < p.height + 0.001);
 });
+
+test('drawer movement preserves file identity; deleting a drawer releases its contents', async () => {
+  const {putInDrawer,deleteBlock,duplicateBlock,drawerChildren,takeOutOfDrawer}=await import('../src/model.js');
+  const p=makePage(1);const d=makeBlock('drawer');const f=makeBlock('file',60,80,{fileId:'original-file'});p.blocks.push(d,f);
+  putInDrawer(p,[f.id],d.id);assert.equal(f.parentId,d.id);assert.equal(f.fileId,'original-file');assert.equal(d.expanded,true);
+  const copy=duplicateBlock(p,d.id);assert.equal(drawerChildren(p,copy.id).length,1);assert.equal(drawerChildren(p,copy.id)[0].fileId,'original-file');
+  takeOutOfDrawer(p,f.id);assert.equal(f.parentId,undefined);
+  putInDrawer(p,[f.id],d.id);deleteBlock(p,d.id);assert.ok(p.blocks.includes(f));assert.equal(f.parentId,undefined);
+});

@@ -149,8 +149,9 @@ try { $listener.Start() } catch { throw "모아 연결 도우미를 시작할 �
 Write-Host "모아 실행 중: $baseUrl"
 Write-Host '이 창을 열어 두세요. 종료하려면 Ctrl+C를 누르거나 창을 닫으세요.'
 if (-not $NoBrowser) { Start-Process $baseUrl }
+$script:running = $true
 try {
-    while ($true) {
+    while ($script:running) {
         if (-not $listener.Pending()) { Start-Sleep -Milliseconds 50; continue }
         $client = $listener.AcceptTcpClient()
         $stream = $client.GetStream()
@@ -205,8 +206,9 @@ try {
             }
             $body = $utf8.GetString($bodyBytes) | ConvertFrom-Json
             switch ($route) {
+                '/api/shutdown' { Send-Json $stream @{stopping=$true}; $script:running = $false }
                 '/api/status' {
-                    Send-Json $stream @{ version = '0.5.0'; folderCount = $script:roots.Count; folders = @($script:roots); apartment = [Threading.Thread]::CurrentThread.GetApartmentState().ToString() }
+                    Send-Json $stream @{ version = '0.6.0'; folderCount = $script:roots.Count; folders = @($script:roots); apartment = [Threading.Thread]::CurrentThread.GetApartmentState().ToString() }
                 }
                 '/api/select-start' { Send-Json $stream (Start-Worker 'select') }
                 '/api/preview-start' {

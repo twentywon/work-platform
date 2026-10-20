@@ -34,7 +34,7 @@ export async function getFile(record) {
   if (record.mode === "desktop") {
     if (!window.moaDesktop)
       throw new Error(
-        "원본 파일은 등록한 컴퓨터의 ‘모아 실행.cmd’로 실행한 화면에서 열어 주세요.",
+        "원본 파일은 등록한 컴퓨터의 ‘모아 실행.vbs’로 실행한 화면에서 열어 주세요.",
       );
     const data = await window.moaDesktop.readFile(record.desktopId);
     return new File([data.bytes], data.name, {
@@ -51,4 +51,17 @@ export async function getFile(record) {
   }
   if (record.file) return record.file;
   throw new Error("파일을 다시 등록해 주세요.");
+}
+export async function allFiles() {
+  const d=await database();
+  return new Promise((resolve,reject)=>{const r=d.transaction('files').objectStore('files').getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+}
+export async function restoreWorkspace(state,files) {
+  const d=await database();
+  await new Promise((resolve,reject)=>{
+    const tx=d.transaction(['state','files'],'readwrite');
+    tx.objectStore('files').clear();
+    for(const file of files)tx.objectStore('files').put(file);
+    tx.objectStore('state').put(state,'workspace');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+  });
 }

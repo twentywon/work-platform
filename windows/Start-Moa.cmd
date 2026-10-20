@@ -1,4 +1,3 @@
 @echo off
-cd /d "%~dp0"
-powershell.exe -NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File "%~dp0Moa-Local.ps1"
-if errorlevel 1 pause
+start "" wscript.exe "%~dp0Start-Moa.vbs"
+exit /b

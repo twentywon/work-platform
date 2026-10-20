@@ -37,7 +37,7 @@ try {
   assert.equal((await request('preview-start',{id:original})).status,400);
   assert.equal((await request('paths',{paths:['relative.txt']})).status,400);
   const status=await(await request('status')).json();
-  assert.equal(status.version,'0.5.0');assert.equal(status.folderCount,0);
+  assert.equal(status.version,'0.6.0');assert.equal(status.folderCount,0);
   const direct=await(await request('paths',{paths:['"'+original+'"']})).json();
   assert.equal(direct.files[0].id,'approved-file');assert.equal(direct.files[0].path,original);
   await writeFile(original,'수정된 원본의 최신 내용');
@@ -60,15 +60,25 @@ try {
   browser=await chromium.launch({executablePath:process.env.MOA_CHROMIUM||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox']});
   const page=await browser.newPage({viewport:{width:1440,height:960}});page.setDefaultTimeout(15000);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  // Mock only WebView2's Windows File -> native-path boundary. All registration/read APIs are real.
+  await page.addInitScript(({original})=>{
+    const listeners=[];window.nativePathMessages=0;
+    window.chrome ||= {};
+    window.chrome.webview={
+      addEventListener(type,fn){if(type==='message')listeners.push(fn)},
+      postMessage(){},
+      postMessageWithAdditionalObjects(message,files){
+        if(!files.length||!files.every(file=>file instanceof File))throw Error('Expected actual File objects');
+        window.nativePathMessages++;
+        queueMicrotask(()=>listeners.forEach(fn=>fn({data:{id:message.id,paths:[original]}})));
+      },
+    };
+  },{original});
+  let pickerRequests=0;
+  page.on('request',r=>{if(r.url().endsWith('/api/select-start'))pickerRequests++});
   await page.goto(origin);await page.locator('#canvas').waitFor();
   assert.equal(await page.locator('[data-action=link-folder]').count(),0);
-  // Mock only the Windows picker boundary; registration and reads use the real server.
-  await page.route('**/api/select-start',route=>route.fulfill({json:{id:'picker-test'}}));
-  await page.route('**/api/job',async route=>{
-    if(route.request().postDataJSON().id==='picker-test')return route.fulfill({json:{files:direct.files}});
-    return route.continue();
-  });
-  await page.locator('.toolbar [data-action=register]').click();
+  await page.locator('#file-input').setInputFiles(original);
   const card=page.locator('.file-open').filter({hasText:'원본 문서.txt'});await card.waitFor();
   assert.match(await card.getAttribute('title'),/원본 문서/);
   await card.hover();await page.getByText('수정된 원본의 최신 내용',{exact:true}).waitFor();
@@ -85,6 +95,17 @@ try {
     const d=new DataTransfer();d.items.add(new File(['drop'],'원본 문서.txt'));return d;
   }),clientX:700,clientY:450});
   await page.locator('.file-open').filter({hasText:'원본 문서.txt'}).nth(1).waitFor();
+  assert.equal(pickerRequests,0);
+  assert.equal(await page.evaluate(()=>window.nativePathMessages),2);
+  assert.equal(await page.locator('#native-picker-form').count(),0);
+  // Drop into a drawer routes the real registered original into its list.
+  await page.locator('[data-add=drawer]').click();
+  const drawer=page.locator('.block-drawer');await drawer.locator('[data-drawer-toggle]').click();
+  await drawer.dispatchEvent('drop',{dataTransfer:await page.evaluateHandle(()=>{
+    const d=new DataTransfer();d.items.add(new File(['drop'],'원본 문서.txt'));return d;
+  }),clientX:700,clientY:450});
+  await drawer.locator('.file-open').filter({hasText:'원본 문서.txt'}).waitFor();
+  assert.equal(pickerRequests,0);assert.equal(await page.evaluate(()=>window.nativePathMessages),3);
   // Manual path fallback also works without any registered folder.
   await page.locator('[data-action=path-shortcut]').click();await page.locator('[name=paths]').fill(original);await page.locator('#save-path').click();
   await page.locator('#path-form').waitFor({state:'detached'});
@@ -97,7 +118,6 @@ try {
   // Simulate Office's exported first-page PDF at the platform boundary, render it for real.
   const docFile=path.join(root,'office-first.doc');await writeFile(docFile,'fixture');
   await page.route('**/api/preview-start',route=>route.fulfill({json:{id:'office-test'}}));
-  await page.unroute('**/api/job');
   await page.route('**/api/job',async route=>{
     if(route.request().postDataJSON().id==='office-test')return route.fulfill({json:{format:'pdf',source:'Word 첫 페이지'}});
     return route.continue();
@@ -110,7 +130,10 @@ try {
   assert.match(await page.locator('#preview-body').textContent(),/Word 첫 페이지/);
   const red=await page.locator('#preview-body img').evaluate(i=>{const c=document.createElement('canvas');c.width=i.naturalWidth;c.height=i.naturalHeight;const x=c.getContext('2d');x.drawImage(i,0,0);return x.getImageData(20,20,1,1).data[0]});
   assert.ok(red>240);assert.deepEqual(errors,[]);
-  console.log('PASS: folder-free picker flow, isolated worker lifecycle, explicit paths, original-file handoff without copies/downloads, PDF/Office first-page rendering under actual CSP. Windows dialog and Office COM execution remain platform checks.');
+  const exited=once(child,'exit');
+  assert.equal((await request('shutdown')).status,200);
+  await exited;assert.equal(child.exitCode,0);
+  console.log('PASS: native File-path boundary (mocked), real folder-free registration/read, drawer drop without confirmation/picker, original open handoff without downloads, isolated workers, PDF/Office rendering under actual CSP, authenticated clean shutdown. WebView2 host, Windows dialogs, ShellExecute and Office COM remain Windows checks.');
 } finally {
   await browser?.close();child.kill();if(child.exitCode===null)await once(child,'exit');await rm(root,{recursive:true,force:true});
 }

@@ -466,7 +466,7 @@ test('native selection shows waiting, cancellation and persistent connection err
   await page.evaluate(()=>window.moaDesktop.pickFiles=async()=>{throw Error('도우미 연결 오류: 테스트')});
   await page.locator('.toolbar [data-action=register]').click();
   await expect(page.locator('#connection-detail')).toContainText('도우미 연결 오류: 테스트');
-  await expect(page.locator('.modal')).toContainText('모아 실행.cmd');
+  await expect(page.locator('.modal')).toContainText('모아 실행.vbs');
   expect(await page.evaluate(()=>window.pickCount)).toBe(1);
 });
 test('browser-only path button explains how to activate original shortcuts', async ({page}) => {
@@ -500,4 +500,76 @@ test('HWP and HWPX use stored first-page images rather than text substitutes', a
     await expect(page.locator('#preview-body')).toContainText('저장된 첫 페이지 이미지');
     await page.locator('#close-modal').click();
   }
+});
+
+test('object borders select file cards without opening them',async({page})=>{
+ await page.evaluate(()=>{
+  window.edgeOpened=[];
+  window.moaDesktop={pickFiles:async()=>[{id:'edge-file',name:'border.txt',path:'C:/Docs/border.txt'}],openFile:async id=>window.edgeOpened.push(id)};
+ });
+ await page.locator('.toolbar [data-action=register]').click();
+ const block=page.locator('.block-file').filter({hasText:'border.txt'});
+ await page.locator('#canvas').click({position:{x:10,y:10}});
+ await block.locator('.edge-right').click();
+ await expect(block).toHaveClass(/selected/);expect(await page.evaluate(()=>window.edgeOpened)).toEqual([]);
+ await block.locator('.edge-left').focus();
+ await page.keyboard.press('Delete');await expect(block).toHaveCount(0);
+});
+test('drawer contains mixed objects, toggles, persists and releases members',async({page})=>{
+ const {readFile}=await import('node:fs/promises');
+ await page.locator('#file-input').setInputFiles({name:'inside.txt',mimeType:'text/plain',buffer:Buffer.from('서랍 속 파일 내용')});
+ await page.locator('#media-input').setInputFiles({name:'motion.gif',mimeType:'image/gif',buffer:await readFile('tests/fixtures/motion.gif')});
+ await page.locator('[data-add=drawer]').click();
+ const drawer=page.locator('.block-drawer');
+ await drawer.locator('[data-drawer-name]').fill('프로젝트 서랍');
+ await drawer.locator('[data-drawer-toggle]').click();
+ await drawer.locator('[data-drawer-existing]').click();
+ await page.locator('.drawer-choice').filter({hasText:'inside.txt'}).locator('input').check();
+ await page.locator('.drawer-choice').filter({hasText:'motion.gif'}).locator('input').check();
+ await page.locator('#drawer-form [type=submit]').click();
+ await expect(drawer.locator('.drawer-entry')).toHaveCount(2);
+ await expect(drawer.locator('img')).toBeVisible();
+ await drawer.locator('[data-drawer-check]').click();
+ await drawer.locator('.block-checkbox .editable').fill('서랍 안 할 일');
+ await drawer.locator('.block-checkbox input').check();
+ await drawer.locator('[data-drawer-toggle]').click();
+ await expect(drawer.locator('.drawer-list')).toHaveCount(0);
+ await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');
+ await page.reload();
+ await expect(page.locator('[data-drawer-name]')).toHaveValue('프로젝트 서랍');
+ await expect(page.locator('.drawer-list')).toHaveCount(0);
+ await page.locator('[data-drawer-toggle]').click();
+ await expect(page.locator('.block-drawer .drawer-entry')).toHaveCount(3);
+ await expect(page.locator('.block-drawer .block-checkbox input')).toBeChecked();
+ const entry=page.locator('.drawer-entry').filter({has:page.locator('.file-open')});
+ await entry.locator('[data-drawer-out]').click();
+ await expect(page.locator('.block-drawer .drawer-entry')).toHaveCount(2);
+ const card=page.locator('.file-open').filter({hasText:'inside.txt'});
+ expect(await card.evaluate(el=>!!el.closest('.drawer-list'))).toBe(false);
+ await card.click();await expect(page.locator('#preview-body')).toContainText('서랍 속 파일 내용');
+});
+
+test('workspace backup restores media, drawer contents and text after replacement',async({page})=>{
+ const {readFile}=await import('node:fs/promises');
+ await page.locator('#media-input').setInputFiles({name:'backup.gif',mimeType:'image/gif',buffer:await readFile('tests/fixtures/motion.gif')});
+ await page.locator('[data-add=drawer]').click();
+ await page.locator('[data-drawer-toggle]').click();
+ await page.locator('[data-drawer-existing]').click();
+ await page.locator('.drawer-choice').filter({hasText:'backup.gif'}).locator('input').check();
+ await page.locator('#drawer-form [type=submit]').click();
+ await page.locator('[data-drawer-note]').click();
+ await page.locator('.in-drawer .editable').fill('옮겨온 보드');
+ await page.locator('[data-action=backup-menu]').click();
+ const backup=await downloadTextFile(page,page.locator('#export-backup'));
+ expect(backup.filename).toBe('Moa-workspace-backup.json');
+ await page.locator('#close-modal').click();
+ await page.locator('[data-add=checkbox]').click();
+ await page.locator('#backup-input').setInputFiles({name:'restore.json',mimeType:'application/json',buffer:Buffer.from(backup.text)});
+ await expect(page.locator('.block-checkbox')).toHaveCount(0);
+ await expect(page.locator('.drawer-entry')).toHaveCount(2);
+ await expect(page.locator('.in-drawer .editable')).toHaveText('옮겨온 보드');
+ await expect.poll(()=>page.locator('.block-media img').evaluate(i=>i.complete&&i.naturalWidth>0)).toBe(true);
+ await page.reload();
+ await expect(page.locator('.in-drawer .editable')).toHaveText('옮겨온 보드');
+ await expect.poll(()=>page.locator('.block-media img').evaluate(i=>i.complete&&i.naturalWidth>0)).toBe(true);
 });

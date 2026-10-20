@@ -1,9 +1,10 @@
 import "./style.css";
+import {makeBackup,readBackup} from "./backup.js";
 import "./local-bridge.js";
 import { blockNames, webURL, mediaKind, monthKey, shiftMonth, monthDays } from "./blocks.js";
 import { createIcons, icons } from "lucide";
-import { uid, makePage, makeBlock, fitScale, clampBlock, snap, rotatedDelta } from "./model.js";
-import { read, write, getFile } from "./storage.js";
+import { uid, makePage, makeBlock, fitScale, clampBlock, snap, rotatedDelta, drawerChildren, putInDrawer, takeOutOfDrawer, deleteBlock, duplicateBlock } from "./model.js";
+import { read, write, getFile, allFiles, restoreWorkspace } from "./storage.js";
 import { previewFile, extension } from "./preview.js";
 const $ = (s) => document.querySelector(s);
 const escape = (s) =>
@@ -26,6 +27,8 @@ let state,
 const fileRecords = new Map();
 const mediaURLs = new Map();
 let pickerPending = false;
+let mediaParent = null;
+let fileParent = null;
 const colors = [
   "#fff4ce",
   "#e9edff",
@@ -166,22 +169,26 @@ function render() {
 <nav class="page-nav">${state.pages.map((x, i) => `<button data-page="${x.id}" class="page-item ${x.id === active ? "current" : ""}">${icon("file")}<span>${escape(x.title)}</span>${x.id === active ? '<span class="current-dot"></span>' : ""}</button>`).join("")}</nav>
 <button class="new-page" data-action="add-page">${icon("plus")}새 페이지 만들기</button>
 <div class="side-bottom"><div class="tip-card"><span class="tip-icon">${icon("sparkles")}</span><strong>생각을 펼쳐보세요</strong><p>메모부터 파일까지,<br>모든 업무를 나만의 공간에.</p><button data-action="help">모아 사용 가이드 ${icon("arrow-up-right")}</button></div><div class="local-label">${icon("hard-drive")}이 브라우저에 안전하게 보관</div><button class="profile" data-action="help"><span class="profile-avatar">나</span><span>나의 공간<small>개인 워크스페이스</small></span>${icon("circle-help")}</button></div></aside>
-<main><header class="topbar"><div class="breadcrumb">워크스페이스 ${icon("chevron-right")}<input id="page-title" aria-label="페이지 이름" value="${escape(p.title)}" maxlength="70"/></div><div class="top-actions"><button id="connection-status" data-action="connection" class="connection-status">${window.moaDesktop ? "PC 연결 도우미" : "미리보기 모드"}</button><span id="save-status">${icon("cloud-check")}모든 변경사항 저장됨</span><button class="icon-btn" data-action="help" title="사용 가이드">${icon("circle-help")}</button></div></header>
-<section class="toolbar" aria-label="삽입 도구모음"><div class="toolbar-group"><button data-add="text">${icon("type")}<span>텍스트</span></button><button data-add="note">${icon("sticky-note")}<span>메모</span></button><button data-add="checkbox">${icon("square-check")}<span>체크박스</span></button><div class="dropdown"><button data-menu="extras">${icon("circle-plus")}<span>더 삽입</span>${icon("chevron-down")}</button><div class="menu" id="extras-menu"><button data-action="media">${icon("image")}<span>미디어</span></button><button data-add="calendar">${icon("calendar-days")}<span>달력</span></button><button data-action="web">${icon("globe")}<span>인터넷 링크</span></button><button data-action="pagelink">${icon("notebook-tabs")}<span>페이지 링크</span></button></div></div><button data-add="table">${icon("table-2")}<span>표</span></button><div class="dropdown"><button data-menu="shapes">${icon("shapes")}<span>도형</span>${icon("chevron-down")}</button><div class="menu" id="shapes-menu"><button data-add="rect">${icon("square")}사각형</button><button data-add="circle">${icon("circle")}원</button></div></div><div class="dropdown"><button data-menu="lines">${icon("columns-2")}<span>구분선</span>${icon("chevron-down")}</button><div class="menu" id="lines-menu"><button data-add="hline">${icon("minus")}가로 구분선</button><button data-add="vline">${icon("move-vertical")}세로 구분선</button></div></div></div><span class="toolbar-divider"></span><button class="link-tool" data-action="register">${icon("link")}<span>파일 연결</span></button><button class="link-tool" data-action="path-shortcut">${icon("clipboard-paste")}<span>경로 붙여넣기</span></button><div class="toolbar-right"><span>가로폭 맞춤 · 격자 20px</span>${icon("lock-keyhole")}<button class="dimensions" data-action="dimensions">${p.width} × ${p.height}</button></div></section>
+<main><header class="topbar"><div class="breadcrumb">워크스페이스 ${icon("chevron-right")}<input id="page-title" aria-label="페이지 이름" value="${escape(p.title)}" maxlength="70"/></div><div class="top-actions"><button id="connection-status" data-action="connection" class="connection-status">${window.moaDesktop?.nativeDropPaths ? "PC 원본 연결" : window.moaDesktop ? "브라우저 연결" : "미리보기 모드"}</button><button data-action="backup-menu" class="connection-status">백업·복원</button><span id="save-status">${icon("cloud-check")}모든 변경사항 저장됨</span><button class="icon-btn" data-action="help" title="사용 가이드">${icon("circle-help")}</button></div></header>
+<section class="toolbar" aria-label="삽입 도구모음"><div class="toolbar-group"><button data-add="text">${icon("type")}<span>텍스트</span></button><button data-add="drawer">${icon("archive")}<span>서랍</span></button><button data-add="note">${icon("sticky-note")}<span>메모</span></button><button data-add="checkbox">${icon("square-check")}<span>체크박스</span></button><div class="dropdown"><button data-menu="extras">${icon("circle-plus")}<span>더 삽입</span>${icon("chevron-down")}</button><div class="menu" id="extras-menu"><button data-action="media">${icon("image")}<span>미디어</span></button><button data-add="calendar">${icon("calendar-days")}<span>달력</span></button><button data-action="web">${icon("globe")}<span>인터넷 링크</span></button><button data-action="pagelink">${icon("notebook-tabs")}<span>페이지 링크</span></button></div></div><button data-add="table">${icon("table-2")}<span>표</span></button><div class="dropdown"><button data-menu="shapes">${icon("shapes")}<span>도형</span>${icon("chevron-down")}</button><div class="menu" id="shapes-menu"><button data-add="rect">${icon("square")}사각형</button><button data-add="circle">${icon("circle")}원</button></div></div><div class="dropdown"><button data-menu="lines">${icon("columns-2")}<span>구분선</span>${icon("chevron-down")}</button><div class="menu" id="lines-menu"><button data-add="hline">${icon("minus")}가로 구분선</button><button data-add="vline">${icon("move-vertical")}세로 구분선</button></div></div></div><span class="toolbar-divider"></span><button class="link-tool" data-action="register">${icon("link")}<span>파일 연결</span></button><button class="link-tool" data-action="path-shortcut">${icon("clipboard-paste")}<span>경로 붙여넣기</span></button><div class="toolbar-right"><span>가로폭 맞춤 · 격자 20px</span>${icon("lock-keyhole")}<button class="dimensions" data-action="dimensions">${p.width} × ${p.height}</button></div></section>
 
-<div class="canvas-viewport" id="viewport"><div class="canvas-space" id="canvas-space"><div class="canvas" id="canvas" style="width:${p.width}px;height:${p.height}px">${p.blocks.map(blockHTML).join("")}<div class="canvas-footer"><span>MADE FOR YOUR IDEAS</span><span>MOA WORKSPACE · ${String(state.pages.indexOf(p) + 1).padStart(2, "0")}</span></div></div></div><div id="selection-tools"></div></div>
+<div class="canvas-viewport" id="viewport"><div class="canvas-space" id="canvas-space"><div class="canvas" id="canvas" style="width:${p.width}px;height:${p.height}px">${p.blocks.filter(b=>!b.parentId).map(b=>blockHTML(b)).join("")}<div class="canvas-footer"><span>MADE FOR YOUR IDEAS</span><span>MOA WORKSPACE · ${String(state.pages.indexOf(p) + 1).padStart(2, "0")}</span></div></div></div><div id="selection-tools"></div></div>
 <footer class="bottom-bar"><span class="page-count">${state.pages.indexOf(p) + 1} / ${state.pages.length} 페이지</span><div class="pagination"><button data-action="prev-page" title="이전 페이지" ${state.pages.indexOf(p) === 0 ? "disabled" : ""}>${icon("chevron-left")}</button>${state.pages.map((x, i) => `<button data-page="${x.id}" class="${x.id === active ? "chosen" : ""}" aria-label="${i + 1}페이지">${i + 1}</button>`).join("")}<button data-action="next-page" title="다음 페이지" ${state.pages.indexOf(p) === state.pages.length - 1 ? "disabled" : ""}>${icon("chevron-right")}</button><span></span><button data-action="add-page" title="새 페이지">${icon("plus")}</button></div><div class="zoom-tools"><button data-action="zoom-out" title="축소">${icon("minus")}</button><button id="zoom-value" data-action="fit" title="화면에 맞추기">100%</button><button data-action="zoom-in" title="확대">${icon("plus")}</button><span></span><button data-action="fullscreen" title="전체 화면">${icon("maximize")}</button></div></footer></main>
-<div id="toast" role="status"></div><div id="hover-preview" class="hover-preview" hidden></div><div id="modal-root"></div><input id="file-input" type="file" multiple hidden /><input id="media-input" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.bmp,.svg,.avif,.mp4,.webm,.ogv,.mov,.m4v" multiple hidden />`;
+<div id="toast" role="status"></div><div id="hover-preview" class="hover-preview" hidden></div><div id="modal-root"></div><input id="file-input" type="file" multiple hidden /><input id="backup-input" type="file" accept="application/json,.json" hidden/><input id="media-input" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.bmp,.svg,.avif,.mp4,.webm,.ogv,.mov,.m4v" multiple hidden />`;
   refreshIcons();
   bind();
   requestAnimationFrame(scaleCanvas);
   loadFileRecords();
   hydrateMedia();
 }
-function blockHTML(b) {
+function blockHTML(b, nested = false) {
   let content = "";
   const editable = (text, cls = "") =>
     `<div class="editable ${cls}" contenteditable="true" spellcheck="false" data-edit="text">${escape(text)}</div>`;
+  if (b.type === "drawer") {
+    const children=drawerChildren(page(),b.id);
+    content=`<div class="drawer-header"><button data-drawer-toggle aria-expanded="${!!b.expanded}" aria-label="서랍 펼치기 또는 접기">${icon(b.expanded?"chevron-down":"chevron-right")}${icon("archive")}</button><input class="drawer-name" data-drawer-name aria-label="서랍 이름" value="${escape(b.name||"새 서랍")}"/><span>${children.length}개</span></div>${b.expanded ? `<div class="drawer-list">${children.map(child=>`<div class="drawer-entry"><div class="drawer-entry-tools"><span>${blockNames[child.type]}</span><button data-drawer-up="${child.id}" title="목록 위로">↑</button><button data-drawer-down="${child.id}" title="목록 아래로">↓</button><button data-drawer-out="${child.id}" title="보드로 꺼내기">${icon("arrow-up-right")}</button></div>${blockHTML(child,true)}</div>`).join("")||'<p class="drawer-empty">이 서랍에 개체를 넣어 보세요.</p>'}</div><div class="drawer-add"><button data-drawer-existing>개체 넣기</button><button data-drawer-file>파일</button><button data-drawer-media>이미지·GIF·영상</button><button data-drawer-note>메모</button><button data-drawer-check>체크</button></div>` : ""}`;
+  }
   if (b.type === "note")
     content = `<div class="note-label">${icon("sticky-note")}<span>${escape(b.label || "QUICK NOTE")}</span></div>${editable(b.text, "note-text")}<span class="note-corner"></span>`;
   if (b.type === "text") content = editable(b.text, b.role || "");
@@ -219,7 +226,7 @@ function blockHTML(b) {
     const [ico, bg, color] = fileStyle(b.name);
     content = `<button class="file-open" data-file="${b.fileId}" title="${escape(b.sourcePath || b.name)}"><span class="file-type" style="background:${bg};color:${color}">${icon(ico)}</span><span class="file-details"><strong>${escape(b.name)}</strong><small id="mode-${b.id}">${window.moaDesktop ? "바로가기 · 원본 파일 열기" : "마우스를 올려 미리보기"}</small></span>${icon("arrow-up-right")}</button>${window.moaDesktop ? `<button class="file-preview-action" data-preview-file="${b.fileId}" title="미리보기">${icon("eye")}</button>` : ""}`;
   }
-  return `<article class="block block-${b.type} ${b.role || ""}" data-id="${b.id}" style="left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;transform:rotate(${Number(b.rotation) || 0}deg);--block-color:${b.color}"><button class="drag-handle" title="드래그하여 이동" aria-label="블록 이동">${icon("grip")}</button>${content}<button class="rotate-handle" title="드래그하여 회전 (15도 간격)" aria-label="블록 회전">${icon("rotate-cw")}</button><button class="resize-handle" title="크기 조절" aria-label="블록 크기 조절"></button></article>`;
+  return `<article class="block block-${b.type} ${b.role || ""} ${nested?'in-drawer':''}" data-id="${b.id}" style="left:${nested?0:b.x}px;top:${nested?0:b.y}px;width:${nested?'100%':b.w+'px'};height:${b.h}px;transform:rotate(${nested?0:Number(b.rotation)||0}deg);--block-color:${b.color}"><button class="drag-handle" title="드래그하여 이동" aria-label="블록 이동">${icon("grip")}</button>${content}${["top","right","bottom","left"].map(edge=>`<button class="select-edge edge-${edge}" aria-label="개체 테두리 선택 ${edge}" title="테두리를 눌러 선택"></button>`).join("")}<button class="rotate-handle" title="드래그하여 회전 (15도 간격)" aria-label="블록 회전">${icon("rotate-cw")}</button><button class="resize-handle" title="크기 조절" aria-label="블록 크기 조절"></button></article>`;
 }
 function bind() {
   document
@@ -261,11 +268,17 @@ function bind() {
   $("#page-title").onkeydown = (e) => {
     if (e.key === "Enter") e.target.blur();
   };
-  $("#media-input").onchange = e => registerMedia([...e.target.files]);
+  $("#backup-input").onchange=async e=>{
+    const file=e.target.files[0];if(!file)return;
+    try {const backup=readBackup(JSON.parse(await file.text()));clearTimeout(saveTimer);await restoreWorkspace(backup.state,backup.files);state=backup.state;active=state.active;selected=null;fileRecords.clear();closeModal();render();toast('작업을 복원했습니다.');}
+    catch(error){toast(error.message);}
+  };
+  $("#media-input").onchange = e => { const parentId=mediaParent;mediaParent=null;registerMedia([...e.target.files],parentId); };
   $("#file-input").onchange = (e) => {
     const files = [...e.target.files];
     if (window.moaDesktop?.registerPaths) e.target.value = "";
-    registerFiles(files);
+    const parentId=fileParent;fileParent=null;
+    registerFiles(files,parentId?{parentId}:undefined);
   };
   $("#canvas").addEventListener("pointerdown", onCanvasPointer);
   $("#canvas").addEventListener("input", (e) => {
@@ -273,6 +286,7 @@ function bind() {
       (b) => b.id === e.target.closest(".block")?.dataset.id,
     );
     if (!block) return;
+    if(e.target.matches('[data-drawer-name]'))block.name=e.target.value;
     if (e.target.dataset.edit) block.text = e.target.innerText;
     if (e.target.dataset.cell) {
       if (!block.cells)
@@ -311,6 +325,29 @@ function bind() {
     const boardPage = e.target.closest("[data-board-page]");
     if (boardPage) return switchPage(boardPage.dataset.boardPage);
     const b = page().blocks.find(b => b.id === e.target.closest(".block")?.dataset.id);
+    if (b?.type==='drawer') {
+      if(e.target.closest('[data-drawer-toggle]')||e.target.closest('.drawer-header')&&!e.target.closest('input')) {
+        if(b.expanded){b.openHeight=b.h;b.h=60;b.expanded=false;}
+        else{b.expanded=true;b.h=b.openHeight||360;clampBlock(b,page());}
+        renderBlocks();persist();return;
+      }
+      if(e.target.closest('[data-drawer-existing]'))return drawerChooser(b.id);
+      if(e.target.closest('[data-drawer-file]')){if(window.moaDesktop&&!window.moaDesktop.nativeDropPaths)return nativePicker('file',{parentId:b.id});fileParent=b.id;$('#file-input').click();return;}
+      if(e.target.closest('[data-drawer-media]')){mediaParent=b.id;$('#media-input').click();return;}
+      if(e.target.closest('[data-drawer-note]')){addBlock('note',{parentId:b.id});return;}
+      if(e.target.closest('[data-drawer-check]')){addBlock('checkbox',{parentId:b.id});return;}
+    }
+    const out=e.target.closest('[data-drawer-out]');
+    if(out){takeOutOfDrawer(page(),out.dataset.drawerOut);renderBlocks();persist();return;}
+    const up=e.target.closest('[data-drawer-up]'),down=e.target.closest('[data-drawer-down]');
+    if(up||down){
+      const childId=up?.dataset.drawerUp||down.dataset.drawerDown;
+      const index=page().blocks.findIndex(x=>x.id===childId);
+      const siblings=drawerChildren(page(),page().blocks[index].parentId);
+      const adjacent=siblings[siblings.findIndex(x=>x.id===childId)+(up?-1:1)];
+      if(adjacent){const other=page().blocks.indexOf(adjacent);[page().blocks[index],page().blocks[other]]=[page().blocks[other],page().blocks[index]];renderBlocks();persist();}
+      return;
+    }
     const step = e.target.closest("[data-calendar-step]");
     if (b && (step || e.target.closest("[data-calendar-today]"))) {
       b.month = step ? shiftMonth(b.month || monthKey(), Number(step.dataset.calendarStep)) : monthKey();
@@ -356,6 +393,7 @@ function bind() {
     const position = {
       x: snap((e.clientX - bounds.left) / zoom),
       y: snap((e.clientY - bounds.top) / zoom),
+      parentId: e.target.closest('.block-drawer')?.dataset.id,
     };
     if (!dropped.length) {
       const address = e.dataTransfer.getData("text/uri-list").split(/\r?\n/).find(line => line && !line.startsWith("#"));
@@ -419,6 +457,7 @@ function addBlock(type, extra = {}) {
   b.w = snap(b.w); b.h = snap(b.h);
   clampBlock(b, p);
   p.blocks.push(b);
+  if(b.parentId)putInDrawer(p,[b.id],b.parentId);
   selected = b.id;
   renderBlocks();
   $("#viewport").scrollTop = Math.max(0, b.y * zoom - 65);
@@ -429,7 +468,7 @@ function addBlock(type, extra = {}) {
 }
 function renderBlocks() {
   const footer = $(".canvas-footer").outerHTML;
-  $("#canvas").innerHTML = page().blocks.map(blockHTML).join("") + footer;
+  $("#canvas").innerHTML = page().blocks.filter(b=>!b.parentId).map(b=>blockHTML(b)).join("") + footer;
   refreshIcons();
   selectBlock(selected);
   hydrateMedia();
@@ -438,7 +477,10 @@ function selectBlock(id) {
   selected = id;
   document
     .querySelectorAll(".block")
-    .forEach((el) => el.classList.toggle("selected", el.dataset.id === id));
+    .forEach((el) => {
+      el.classList.toggle("selected", el.dataset.id === id);
+      el.classList.toggle("contains-selected", !![...el.querySelectorAll('.block')].find(child=>child.dataset.id===id));
+    });
   const b = page().blocks.find((b) => b.id === id);
   const box = $("#selection-tools");
   if (!b) {
@@ -467,15 +509,11 @@ function selectBlock(id) {
         if (a === "edit-link") return linkDialog(b.type, b);
         if (a === "rotate") { b.rotation = ((b.rotation || 0) + 90) % 360; clampBlock(b, page()); }
         if (a === "delete") {
-          page().blocks = page().blocks.filter((x) => x.id !== b.id);
+          deleteBlock(page(),b.id);
           selected = null;
         }
         if (a === "duplicate") {
-          const copy = clampBlock(
-            { ...structuredClone(b), id: uid(), x: snap(b.x + 40), y: snap(b.y + 40) },
-            page(),
-          );
-          page().blocks.push(copy);
+          const copy = duplicateBlock(page(),b.id);
           selected = copy.id;
         }
         if (["row", "column", "remove-row", "remove-column"].includes(a)) {
@@ -505,6 +543,8 @@ function onCanvasPointer(e) {
   }
   const b = page().blocks.find((x) => x.id === el.dataset.id);
   selectBlock(b.id);
+  if(e.target.closest('.select-edge')){e.target.closest('.select-edge').focus();e.preventDefault();return;}
+  if(b.parentId)return;
   const resize = e.target.closest(".resize-handle"),
     drag = e.target.closest(".drag-handle"),
     rotate = e.target.closest(".rotate-handle");
@@ -568,8 +608,9 @@ function onCanvasPointer(e) {
 }
 async function action(a) {
   document.querySelectorAll(".menu").forEach(el => el.classList.remove("open"));
+  if (a === "backup-menu") return backupMenu();
   if (a === "connection") return connectionHelp();
-  if (a === "media") { $("#media-input").click(); return; }
+  if (a === "media") { mediaParent=null;$("#media-input").click(); return; }
   if (a === "web" || a === "pagelink") return linkDialog(a);
   if (a === "register") return pickFiles();
   if (a === "path-shortcut") {
@@ -616,6 +657,8 @@ async function action(a) {
     toast(`내 작업 공간에 ${state.pages.length}개의 페이지가 있습니다.`);
 }
 async function pickFiles() {
+  fileParent=null;
+  if(window.moaDesktop?.nativeDropPaths){$('#file-input').click();return;}
   if (window.moaDesktop) return nativePicker("file");
   if ("showOpenFilePicker" in window) {
     try {
@@ -635,6 +678,19 @@ async function pickFiles() {
     }
   }
   $("#file-input").click();
+}
+function backupMenu(){
+  modal('작업 백업·복원',`<div class="connection-help"><p>전용 창과 기존 Chrome·Edge는 저장 공간이 다릅니다. 기존 브라우저에서 <strong>http://127.0.0.1:17843</strong>을 열고 백업한 뒤, 전용 창에서 같은 파일을 복원하세요.</p><p>백업에는 보드와 바로가기 경로, 보드에 넣은 미디어가 포함됩니다. 원본 문서는 복사하지 않습니다. 복원하면 현재 보드를 백업 내용으로 바꿉니다.</p><button class="primary-btn" id="export-backup">현재 작업 백업</button><button class="secondary-btn" id="import-backup">백업 파일 복원</button></div>`);
+  $('#export-backup').onclick=async()=>{
+    try {clearTimeout(saveTimer);await write('state',state,'workspace');const data=await makeBackup(state,await allFiles());const url=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='Moa-workspace-backup.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}
+    catch(error){toast(error.message);}
+  };
+  $('#import-backup').onclick=()=>$('#backup-input').click();
+}
+function drawerChooser(drawerId) {
+  const choices=page().blocks.filter(b=>!b.parentId&&b.id!==drawerId&&b.type!=='drawer');
+  modal('서랍에 개체 넣기',`<form class="insert-form" id="drawer-form"><p>이 보드의 개체를 골라 서랍에 넣습니다.</p>${choices.map(b=>`<label class="drawer-choice"><input type="checkbox" name="members" value="${b.id}"/>${blockNames[b.type]} · ${escape(b.name||b.text||'개체').slice(0,90)}</label>`).join('')||'<p>보드에 개체를 먼저 추가하거나 서랍의 추가 버튼을 사용하세요.</p>'}<button type="submit" class="primary-btn">선택한 개체 넣기</button></form>`);
+  $('#drawer-form').onsubmit=e=>{e.preventDefault();const ids=[...e.target.querySelectorAll('input:checked')].map(i=>i.value);putInDrawer(page(),ids,drawerId);closeModal();renderBlocks();persist();};
 }
 function pathDialog(kind, dropped = [], position, error = "") {
   modal("원본 파일 경로 붙여넣기", `<form id="path-form" class="insert-form"><p>탐색기에서 파일을 선택하고 Shift+마우스 오른쪽 클릭 → ‘경로로 복사’를 누르세요. 아래에 붙여넣으면 그 원본 위치를 연결합니다. 여러 파일 경로도 한 줄에 하나씩 입력할 수 있습니다.</p>${dropped.length ? `<p>선택한 파일: ${escape(dropped.map(f => f.name).join(", "))}</p>` : ""}<label>파일 전체 경로<textarea name="paths" rows="4" required placeholder="탐색기의 ‘경로로 복사’ 결과를 붙여넣으세요"></textarea></label><p id="path-error" role="alert">${escape(error)}</p><button type="submit" class="primary-btn" id="save-path">바로가기 추가</button><button type="button" class="secondary-btn" id="legacy-picker">Windows 파일 선택 창 사용</button><div id="linked-folders" class="muted"></div></form>`);
@@ -687,7 +743,7 @@ async function nativePicker(kind, position, dropped = []) {
 }
 async function connectionHelp(error) {
   const native = !!window.moaDesktop;
-  modal(error ? "파일 연결을 완료하지 못했습니다" : "PC 파일 연결 상태", `<div class="connection-help"><p id="connection-detail" role="status">${error ? escape(error) : native ? "PC 연결 도우미로 실행 중입니다." : "현재는 HTML 미리보기 모드입니다. 원본 바로가기는 Windows 연결 도우미로 실행해야 합니다."}</p><ol><li>열려 있는 기존 모아 연결 도우미 창을 닫으세요.</li><li>최신 ZIP을 압축 해제하고 <strong>모아 실행.cmd</strong>를 실행하세요.</li><li>도우미 창을 열어 둔 채 브라우저 주소가 <strong>http://127.0.0.1:17843</strong>인지 확인하세요.</li><li>이 화면을 새로고침하고 파일 연결 또는 경로 붙여넣기를 다시 누르세요.</li></ol><p>선택 창이 보이지 않으면 <strong>Alt+Tab</strong>으로 ‘모아’ 창을 확인해 주세요. 도우미 창에 오류 문구가 있다면 그 내용으로 원인을 확인할 수 있습니다.</p><button class="secondary-btn" id="connection-reload">이 화면 새로고침</button></div>`);
+  modal(error ? "파일 연결을 완료하지 못했습니다" : "PC 파일 연결 상태", `<div class="connection-help"><p id="connection-detail" role="status">${error ? escape(error) : native ? "PC 연결 도우미로 실행 중입니다." : "현재는 HTML 미리보기 모드입니다. 원본 바로가기는 Windows 전용 창에서 사용하세요."}</p><ol><li>이전 모아 창과 검은 연결 도우미 창을 닫으세요.</li><li>최신 ZIP 전체를 압축 해제하고 <strong>모아 실행.vbs</strong>를 실행하세요.</li><li>검은 창 없이 열린 전용 창에서 탐색기 파일을 끌어놓거나 파일 연결을 누르세요. 폴더 연결과 추가 원본 확인 창은 필요하지 않습니다.</li><li>Microsoft Edge WebView2 Runtime이 없거나 오래되면 Microsoft 공식 버전으로 설치·업데이트하세요.</li></ol><p>기존 Chrome·Edge에서 <strong>http://127.0.0.1:17843</strong>을 열고 <strong>백업·복원</strong>으로 새 전용 창에 보드를 옮깁니다. 실행 오류는 메시지 창에, 연결 도우미 오류는 %LOCALAPPDATA%\\MoaWeb\\helper.log에 기록됩니다. 경로 붙여넣기도 사용할 수 있습니다.</p><button class="secondary-btn" id="connection-reload">이 화면 새로고침</button></div>`);
   $("#connection-reload").onclick = () => location.reload();
   const detail = $("#connection-detail");
   if (!error && window.moaDesktop?.status && !pickerPending) {
@@ -714,11 +770,12 @@ async function registerNativeRecords(records, position) {
         "file",
         (position?.x ?? 60) + (count % 3) * 320,
         (position?.y ?? 100) + Math.floor(count / 3) * 100,
-        { name: record.name, fileId: record.id, sourcePath: record.path },
+        { name: record.name, fileId: record.id, sourcePath: record.path, parentId:position?.parentId },
       ),
       page(),
     );
     page().blocks.push(b);
+    if(b.parentId)putInDrawer(page(),[b.id],b.parentId);
     selected = b.id;
     count++;
   }
@@ -729,7 +786,13 @@ async function registerNativeRecords(records, position) {
 }
 async function registerFiles(items, position) {
   if (!items.length) return;
-  if (window.moaDesktop?.cancelSelection) return nativePicker("file", position, items);
+  if(window.moaDesktop?.nativeDropUnavailable){connectionHelp('원본 경로 전달을 지원하는 최신 Microsoft Edge WebView2 Runtime이 필요합니다. 업데이트한 뒤 모아 전용 창을 다시 실행하세요.');return;}
+  if(window.moaDesktop?.nativeDropPaths) {
+    try { await registerNativeRecords(await window.moaDesktop.registerDroppedFiles(items),position); }
+    catch(error){pathDialog('file',items,position,error.message);}
+    return;
+  }
+  if (window.moaDesktop?.cancelSelection) { connectionHelp('확인 창 없이 파일을 끌어 놓으려면 ZIP의 모아 실행.vbs로 전용 창을 실행하세요. 일반 브라우저는 전체 원본 경로를 제공하지 않습니다.'); return; }
   if (window.moaDesktop) {
     try {
       await registerNativeRecords(
@@ -759,11 +822,12 @@ async function registerFiles(items, position) {
           "file",
           (position?.x ?? 60) + (count % 3) * 320,
           (position?.y ?? 100) + Math.floor(count / 3) * 100,
-          { name: file.name, fileId: id },
+          { name: file.name, fileId: id, parentId:position?.parentId },
         ),
         page(),
       );
       page().blocks.push(b);
+      if(b.parentId)putInDrawer(page(),[b.id],b.parentId);
       selected = b.id;
       count++;
     } catch {
@@ -887,7 +951,7 @@ async function openRegisteredFile(id) {
       connectionHelp(e.message || "원본 파일을 열 수 없습니다. 파일 위치와 기본 연결 프로그램을 확인해 주세요.");
     }
   } else if (record?.mode === "desktop") {
-    toast("이 바로가기는 ‘모아 실행.cmd’로 실행한 화면에서 열어 주세요.");
+    toast("이 바로가기는 ‘모아 실행.vbs’로 실행한 화면에서 열어 주세요.");
   } else openPreview(id);
 }
 async function openPreview(id) {
@@ -928,7 +992,7 @@ async function openPreview(id) {
       previewBody.textContent = `미리보기를 열 수 없습니다. ${e.message}`;
   }
 }
-async function registerMedia(files) {
+async function registerMedia(files,parentId) {
   for (const file of files) {
     const kind = mediaKind(file);
     if (!kind) { toast("이미지, GIF 또는 MP4·WebM 등의 영상을 선택해 주세요."); continue; }
@@ -936,7 +1000,7 @@ async function registerMedia(files) {
     try {
       const id = uid();
       await write("files", { id, name: file.name, mode: "copy", file });
-      addBlock("media", { fileId: id, name: file.name, mediaKind: kind });
+      addBlock("media", { fileId: id, name: file.name, mediaKind: kind, parentId });
     } catch { toast("미디어를 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요."); }
   }
   $("#media-input").value = "";
@@ -996,7 +1060,7 @@ function calendarEvent(block, date) {
 function help() {
   modal(
     "모아 사용 가이드",
-    `<div class="help-body"><div class="help-intro">업무를 가로로 넓게 펼쳐보세요.</div><p>상단 도구모음에서 메모, 표, 도형과 가로·세로 구분선을 추가합니다. 개체를 선택한 뒤 이동·크기 손잡이를 드래그하면 20px 격자에 맞춥니다. 회전 손잡이는 15도 간격이며 아래 도구모음에서 각도를 입력하거나 90도씩 회전할 수 있습니다.</p><h3>새 블록 삽입</h3><p>체크박스에는 할 일과 완료 상태를 기록합니다. 더 삽입 메뉴에서 미디어·인터넷 링크·달력·페이지 링크를 추가하세요. 이미지와 GIF는 보드 안에 표시되고 영상은 재생 버튼으로 볼 수 있습니다. 미디어는 브라우저에 사본으로 저장하며 파일당 100MB까지 지원합니다. 달력 날짜를 누르면 일정 메모를 저장할 수 있습니다. 인터넷 링크는 새 탭으로, 페이지 링크는 해당 보드 페이지로 이동합니다.</p><h3>원본 파일을 바로가기로 연결</h3><p>Windows에서는 ZIP을 풀고 <strong>모아 실행.cmd</strong>를 실행하세요. 연결 도우미 창을 열어 두면 파일 카드 클릭 시 한글·Excel 등 PC 기본 프로그램으로 그 원본을 엽니다. 파일 내용을 내려받거나 사본으로 저장하지 않습니다.</p><p>파일 연결에서 Windows 선택 창으로 원본을 고르거나 경로 붙여넣기를 사용하세요. 폴더를 미리 지정할 필요가 없습니다. 브라우저에 파일을 끌어 놓으면 Windows 선택 창에서 해당 원본을 한 번 확인합니다. 원본을 이동하거나 삭제하면 다시 연결해 주세요.</p><p>모아.html만 직접 열면 브라우저 미리보기 모드이며 PC 기본 프로그램 실행은 지원하지 않습니다. 지원 브라우저에서는 원본 핸들을, 그 외에는 등록 시점의 사본을 보관한다고 표시합니다.</p><h3>미리보기</h3><p>마우스를 올리거나 카드의 눈 버튼을 누르세요. PDF는 실제 첫 페이지를 이미지로 표시합니다. HWP/HWPX는 저장된 미리보기를, Word·Excel·PowerPoint는 저장된 이미지 또는 설치된 Office를 사용합니다. 미리보기가 지원되지 않으면 이유를 표시하고 텍스트·표로 전환합니다.</p><h3>페이지와 저장</h3><p>페이지 크기는 고정하고 가로폭에 맞춰 표시합니다. 긴 보드는 세로로 스크롤합니다. 작은 페이지 이름은 위쪽 경로에서 수정하고 아래 숫자 버튼으로 페이지를 이동하세요.</p><p>작업은 같은 브라우저에 자동 저장됩니다. HTML 직접 실행과 연결 도우미 화면은 저장 공간이 다릅니다. 사이트 데이터를 지우면 작업이 사라집니다. 클라우드 동기화는 제공하지 않습니다.</p></div>`,
+    `<div class="help-body"><div class="help-intro">업무를 가로로 넓게 펼쳐보세요.</div><p>상단 도구모음에서 메모, 표, 도형과 가로·세로 구분선을 추가합니다. 개체를 선택한 뒤 이동·크기 손잡이를 드래그하면 20px 격자에 맞춥니다. 회전 손잡이는 15도 간격이며 아래 도구모음에서 각도를 입력하거나 90도씩 회전할 수 있습니다.</p><h3>새 블록 삽입</h3><p>서랍을 추가하고 화살표를 눌러 펼치세요. 기존 개체를 담거나 파일·이미지·GIF·영상·메모·체크를 목록으로 추가하고 순서를 바꾸거나 꺼낼 수 있습니다. 개체 테두리를 클릭하면 선택됩니다.</p><p>체크박스에는 할 일과 완료 상태를 기록합니다. 더 삽입 메뉴에서 미디어·인터넷 링크·달력·페이지 링크를 추가하세요. 이미지와 GIF는 보드 안에 표시되고 영상은 재생 버튼으로 볼 수 있습니다. 미디어는 브라우저에 사본으로 저장하며 파일당 100MB까지 지원합니다. 달력 날짜를 누르면 일정 메모를 저장할 수 있습니다. 인터넷 링크는 새 탭으로, 페이지 링크는 해당 보드 페이지로 이동합니다.</p><h3>원본 파일을 바로가기로 연결</h3><p>Windows에서는 ZIP을 풀고 <strong>모아 실행.vbs</strong>를 실행하세요. 검은 창 없이 전용 HTML 창이 열리고 파일 카드 클릭 시 한글·Excel 등 PC 기본 프로그램으로 그 원본을 엽니다. 파일 내용을 내려받거나 사본으로 저장하지 않습니다.</p><p>전용 창에 파일을 끌어놓으면 원본 확인 창 없이 연결합니다. 파일 연결 버튼이나 경로 붙여넣기도 사용할 수 있습니다. 폴더를 미리 지정할 필요가 없습니다. 일반 브라우저에서는 드래그한 파일의 전체 경로를 받을 수 없습니다. 원본을 이동하거나 삭제하면 다시 연결해 주세요.</p><p>모아.html만 직접 열면 브라우저 미리보기 모드이며 PC 기본 프로그램 실행은 지원하지 않습니다. 지원 브라우저에서는 원본 핸들을, 그 외에는 등록 시점의 사본을 보관한다고 표시합니다.</p><h3>미리보기</h3><p>마우스를 올리거나 카드의 눈 버튼을 누르세요. PDF는 실제 첫 페이지를 이미지로 표시합니다. HWP/HWPX는 저장된 미리보기를, Word·Excel·PowerPoint는 저장된 이미지 또는 설치된 Office를 사용합니다. 미리보기가 지원되지 않으면 이유를 표시하고 텍스트·표로 전환합니다.</p><h3>페이지와 저장</h3><p>페이지 크기는 고정하고 가로폭에 맞춰 표시합니다. 긴 보드는 세로로 스크롤합니다. 작은 페이지 이름은 위쪽 경로에서 수정하고 아래 숫자 버튼으로 페이지를 이동하세요.</p><p>작업은 현재 창의 저장 공간에 자동 저장됩니다. 기존 Chrome·Edge와 새 전용 창, HTML 직접 실행은 저장 공간이 다릅니다. 백업·복원으로 옮기고 주기적으로 보관하세요. 사이트 데이터를 지우면 작업이 사라집니다. 클라우드 동기화는 제공하지 않습니다.</p></div>`,
   );
 }
 async function fileLibrary() {
@@ -1072,7 +1136,7 @@ document.addEventListener("keydown", (e) => {
     !$(".modal")
   ) {
     e.preventDefault();
-    page().blocks = page().blocks.filter((b) => b.id !== selected);
+    deleteBlock(page(),selected);
     selected = null;
     renderBlocks();
     persist();

@@ -4,6 +4,7 @@ export function makePage(index, width = 1160, height = 760) {
 }
 export function makeBlock(type, x = 60, y = 210, extra = {}) {
   const sizes = {
+    drawer: [380, 60],
     note: [290, 190],
     text: [350, 100],
     table: [490, 220],
@@ -60,4 +61,42 @@ export const snap = value => Math.round(value / GRID) * GRID;
 export function rotatedDelta(dx, dy, rotation) {
   const angle = rotation * Math.PI / 180;
   return { x: dx * Math.cos(angle) + dy * Math.sin(angle), y: -dx * Math.sin(angle) + dy * Math.cos(angle) };
+}
+
+// Drawer members stay in the page's flat record list so file IDs and editing stay stable.
+export function drawerChildren(page, id) { return page.blocks.filter(b=>b.parentId===id); }
+export function putInDrawer(page, ids, drawerId) {
+  const drawer=page.blocks.find(b=>b.id===drawerId&&b.type==='drawer');
+  if(!drawer) throw Error('서랍을 찾을 수 없습니다.');
+  for(const id of ids) {
+    const block=page.blocks.find(b=>b.id===id);
+    if(!block||block.type==='drawer') continue;
+    block.parentId=drawerId;
+  }
+  drawer.expanded=true;
+  drawer.h=Math.min(page.height-drawer.y,Math.max(260,drawer.openHeight||360));
+}
+export function takeOutOfDrawer(page,id) {
+  const block=page.blocks.find(b=>b.id===id);
+  if(!block?.parentId)return;
+  const drawer=page.blocks.find(b=>b.id===block.parentId);
+  delete block.parentId;
+  const right=(drawer?.x||0)+(drawer?.w||0)+20;
+  const beside=right+block.w<=page.width;
+  block.x=beside?right:(drawer?.x||0);
+  block.y=beside?(drawer?.y||0):(drawer?.y||0)+(drawer?.h||0)+20;
+  clampBlock(block,page);
+}
+export function deleteBlock(page,id) {
+  const block=page.blocks.find(b=>b.id===id);
+  if(block?.type==='drawer')for(const child of drawerChildren(page,id))takeOutOfDrawer(page,child.id);
+  page.blocks=page.blocks.filter(b=>b.id!==id);
+}
+export function duplicateBlock(page,id) {
+  const block=page.blocks.find(b=>b.id===id);
+  if(!block)return null;
+  const copy=clampBlock({...structuredClone(block),id:uid(),x:snap(block.x+40),y:snap(block.y+40)},page);
+  page.blocks.push(copy);
+  if(block.type==='drawer') for(const child of drawerChildren(page,id))page.blocks.push({...structuredClone(child),id:uid(),parentId:copy.id});
+  return copy;
 }
