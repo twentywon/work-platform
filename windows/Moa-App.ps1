@@ -17,6 +17,8 @@ try {
     try { $probe.Connect('127.0.0.1',$Port); throw '이전 모아 연결 도우미가 실행 중입니다. 이전 검은 창 또는 모아 창을 닫고 다시 실행하세요.' }
     catch [Net.Sockets.SocketException] {} finally { $probe.Dispose() }
     $sdk = Join-Path $PSScriptRoot 'webview2'
+    . (Join-Path $PSScriptRoot 'Moa-Sdk.ps1')
+    Initialize-MoaSdk -SdkDirectory $sdk
     Add-Type -Path (Join-Path $sdk 'Microsoft.Web.WebView2.Core.dll')
     Add-Type -Path (Join-Path $sdk 'Microsoft.Web.WebView2.WinForms.dll')
     $architecture = if ([Environment]::Is64BitProcess) { 'x64' } else { 'x86' }

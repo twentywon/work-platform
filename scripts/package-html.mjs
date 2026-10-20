@@ -7,7 +7,7 @@ const zip=new JSZip();
 const html=await readFile(path.join(root,'모아.html'));
 zip.file('모아.html',html);
 zip.file('모아 실행.cmd',await readFile(path.join(root,'windows/Start-Moa.cmd')));
-for(const name of ['Moa-Local.ps1','Moa-Worker.ps1','Moa-App.ps1','Start-Moa.vbs'])zip.file(name,await readFile(path.join(root,'windows',name)));
+for(const name of ['Moa-Local.ps1','Moa-Worker.ps1','Moa-App.ps1','Moa-Sdk.ps1','Start-Moa.vbs'])zip.file(name,await readFile(path.join(root,'windows',name)));
 zip.file('모아 실행.vbs',await readFile(path.join(root,'windows/Start-Moa.vbs')));
 async function addRuntime(relative){
  const absolute=path.join(root,'windows',relative);
@@ -16,10 +16,11 @@ async function addRuntime(relative){
  else zip.file(relative.split(path.sep).join('/'),await readFile(absolute));
 }
 await addRuntime('webview2');
-zip.file('사용방법.txt',`모아 v0.6 · Windows 10/11
+zip.file('사용방법.txt',`모아 v0.6.1 · Windows 10/11
 
 1. ZIP 전체를 압축 해제하세요. 이전 모아 창과 검은 연결 도우미 창은 먼저 닫으세요.
 2. 모아 실행.vbs를 더블클릭하세요. 검은 창 없이 모아 전용 HTML 창이 열립니다. 창을 닫으면 연결 도우미도 종료됩니다. EXE 빌드나 Node.js 설치는 필요하지 않습니다. 모아 실행.cmd도 같은 전용 창을 실행합니다.
+시작 시 공식 WebView2 SDK DLL 4개의 SHA256을 확인하고 해당 파일의 다운로드 차단 표시만 자동 해제합니다. 0x80131515 오류가 계속되면 ZIP 파일 우클릭 → 속성 → 차단 해제 후 새 폴더에 다시 압축 해제하세요. 일반 문서나 시스템 보안 설정은 바꾸지 않습니다.
 3. Microsoft Edge WebView2 Runtime이 설치되어 있어야 합니다. 없거나 구버전이면 Microsoft 공식 WebView2 안내에 따라 설치/업데이트하세요: https://developer.microsoft.com/microsoft-edge/webview2/
 4. 전용 창에 탐색기 파일을 끌어놓으면 원본 확인 창 없이 바로 연결합니다. 파일 연결 버튼으로도 등록할 수 있습니다. 카드 클릭은 등록한 원본을 Windows 기본 프로그램으로 엽니다. 원본 문서를 복사하거나 다운로드하지 않습니다. 폴더 연결은 필요하지 않습니다. 경로 붙여넣기도 가능합니다.
 5. 일반 Chrome·Edge와 HTML 직접 실행에서는 네이티브 드래그 경로를 받을 수 없습니다. 원본 연결과 확인 없는 드래그는 전용 창에서 사용하세요. 원본을 옮기거나 삭제하면 다시 연결해야 합니다.
@@ -50,7 +51,7 @@ await mkdir(path.dirname(out),{recursive:true});
 const buffer=await zip.generateAsync({type:'nodebuffer',compression:'DEFLATE',compressionOptions:{level:6}});
 await writeFile(out,buffer);
 const verified=await JSZip.loadAsync(await readFile(out),{checkCRC32:true});
-for(const required of ['모아.html','개발용소스/src/main.js','Moa-Worker.ps1','Moa-Local.ps1','Moa-App.ps1','모아 실행.cmd','모아 실행.vbs','Start-Moa.vbs','webview2/Microsoft.Web.WebView2.Core.dll','webview2/Microsoft.Web.WebView2.WinForms.dll','webview2/x64/WebView2Loader.dll','webview2/x86/WebView2Loader.dll','webview2/LICENSE.txt','webview2/PROVENANCE.json'])if(!verified.file(required))throw Error('ZIP content missing: '+required);
+for(const required of ['모아.html','개발용소스/src/main.js','Moa-Worker.ps1','Moa-Local.ps1','Moa-App.ps1','Moa-Sdk.ps1','모아 실행.cmd','모아 실행.vbs','Start-Moa.vbs','webview2/Microsoft.Web.WebView2.Core.dll','webview2/Microsoft.Web.WebView2.WinForms.dll','webview2/x64/WebView2Loader.dll','webview2/x86/WebView2Loader.dll','webview2/LICENSE.txt','webview2/PROVENANCE.json'])if(!verified.file(required))throw Error('ZIP content missing: '+required);
 const provenance=JSON.parse(await verified.file('webview2/PROVENANCE.json').async('string'));
 for(const [name,expected] of Object.entries(provenance.sha256))if(createHash('sha256').update(await verified.file('webview2/'+name).async('nodebuffer')).digest('hex')!==expected)throw Error('SDK hash mismatch: '+name);
 if(!Buffer.from(await verified.file('모아.html').async('uint8array')).equals(html))throw Error('HTML verification failed');

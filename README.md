@@ -6,6 +6,8 @@
 
 1. ZIP 전체를 압축 해제하고 이전 모아 창과 검은 연결 도우미 창을 닫습니다.
 2. **모아 실행.vbs**를 더블클릭합니다. 검은 창 없이 전용 HTML 창이 열리며, 모아 창을 닫으면 연결 도우미도 종료됩니다. CMD도 같은 창을 실행합니다. EXE 빌드나 Node.js 설치는 필요하지 않습니다.
+시작 전에 공식 SDK DLL 4개의 고정 SHA256을 검사한 뒤 해당 DLL에 한해 다운로드 영역 표시를 해제합니다. Windows의 `0x80131515` DLL 로드 오류를 방지하기 위한 처리입니다. 해제가 실패하면 ZIP 우클릭 → 속성 → **차단 해제** 후 새 폴더에 다시 압축 해제하세요. 시스템 보안 설정과 사용자 문서는 변경하지 않습니다.
+
 3. 설치된 **Microsoft Edge WebView2 Runtime**을 사용합니다. 없거나 오래된 경우 [Microsoft 공식 안내](https://developer.microsoft.com/microsoft-edge/webview2/)에서 설치·업데이트하세요. 공식 SDK DLL과 라이선스·출처·해시는 ZIP의 `webview2/`에 포함합니다.
 4. 탐색기 파일을 전용 창에 끌어놓거나 **파일 연결**에서 고르면 원본 경로를 바로 등록합니다. 폴더 연결과 추가 원본 확인 창이 필요하지 않습니다. 카드 클릭은 원본을 Windows 기본 연결 프로그램으로 엽니다. 원본 문서 사본이나 다운로드를 만들지 않습니다.
 5. **경로 붙여넣기**도 지원합니다. 원본을 이동·삭제하면 다시 연결하세요.
@@ -70,3 +72,5 @@ npm run package:html
 브라우저와 실제 PowerShell 서버에서 원본 경로 등록·작업 프로세스 수명·다운로드 없는 열기 요청·첫 페이지 렌더링·저장을 검증합니다. PDF 테스트는 빨간 첫 페이지와 파란 두 번째 페이지를 가진 실제 PDF의 픽셀을 검사합니다. HWP/HWPX 테스트는 저장된 이미지 스트림을 추출합니다. Linux에서는 WebView2 파일 전달 경계를 모의하고 실제 PowerShell 경로 등록·읽기와 연결합니다. Windows WebView2 시작·실제 드래그·기본 프로그램 실행·Office COM은 Windows에서 확인해야 합니다. 관리 Chromium의 file:// 차단으로 HTML 직접 실행 테스트는 브리지 없는 Electron Chromium 창을 사용합니다.
 
 Electron 개발 소스는 desktop/에 유지하며 `npm run desktop`으로 실행합니다. 사용자 요청 없이 EXE를 새로 만들지 않습니다.
+
+SDK 준비 회귀 검증은 `pwsh -NoProfile -File tests/sdk-preparation.ps1`로 실행합니다. 실제 DLL 해시·누락·변조 거부와 로드 전 준비 순서를 검사합니다. Windows에서는 NTFS Zone.Identifier를 실제 생성·해제하며, Linux에서는 Unblock-File 경계만 모의합니다.
