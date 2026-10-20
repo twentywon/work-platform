@@ -7,7 +7,7 @@ import {fonts,textTypes,textStyle,appearanceStyle,hexColor} from "./format.js";
 import {makeBackup,readBackup} from "./backup.js";
 import "./local-bridge.js";
 import { blockNames, webURL, mediaKind, monthKey, shiftMonth, monthDays } from "./blocks.js";
-import { createIcons, icons } from "lucide";
+import {refreshIcons} from "./icons.js";
 import { uid, makePage, makeBlock, fitScale, clampBlock, snap, rotatedDelta, drawerChildren, putInDrawer, takeOutOfDrawer, deleteBlocks, duplicateBlock, rotatedBounds, groupDelta, rotateBlock } from "./model.js";
 import { read, write, getFile, allFiles, restoreWorkspace } from "./storage.js";
 import { previewFile, extension } from "./preview.js";
@@ -51,24 +51,18 @@ async function persist({history=true,mergeKey=""}={}) {
   syncHistoryButtons();
   clearTimeout(saveTimer);
   $("#save-status").innerHTML = icon("loader-circle") + " 저장 중";
-  refreshIcons();
+  refreshIcons($("#save-status"));
   saveTimer = setTimeout(async () => {
     try {
       await write("state", state, "workspace");
       $("#save-status").innerHTML =
-        icon("cloud-check") + " 모든 변경사항 저장됨";
+        icon("circle-check") + " 모든 변경사항 저장됨";
     } catch {
       $("#save-status").textContent = "저장 실패 · 저장 공간을 확인해 주세요";
       toast("저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.");
     }
-    refreshIcons();
+    refreshIcons($("#save-status"));
   }, 250);
-}
-function refreshIcons() {
-  document
-    .querySelectorAll("svg[data-lucide]")
-    .forEach((el) => el.removeAttribute("data-lucide"));
-  createIcons({ icons, attrs: { "stroke-width": 1.7 } });
 }
 function toast(message) {
   let el = $("#toast");
@@ -181,7 +175,7 @@ function render() {
 <nav class="page-nav">${state.pages.map((x, i) => `<button data-page="${x.id}" class="page-item ${x.id === active ? "current" : ""}">${icon("file")}<span>${escape(x.title)}</span>${x.id === active ? '<span class="current-dot"></span>' : ""}</button>`).join("")}</nav>
 <button class="new-page" data-action="add-page">${icon("plus")}새 페이지 만들기</button>
 <div class="side-bottom"><div class="tip-card"><span class="tip-icon">${icon("sparkles")}</span><strong>생각을 펼쳐보세요</strong><p>메모부터 파일까지,<br>모든 업무를 나만의 공간에.</p><button data-action="help">코션 사용 가이드 ${icon("arrow-up-right")}</button></div><div class="local-label">${icon("hard-drive")}이 브라우저에 안전하게 보관</div><button class="profile" data-action="help"><span class="profile-avatar">나</span><span>나의 공간<small>개인 워크스페이스</small></span>${icon("circle-help")}</button></div></aside>
-<main><header class="topbar"><div class="breadcrumb">워크스페이스 ${icon("chevron-right")}<input id="page-title" aria-label="페이지 이름" value="${escape(p.title)}" maxlength="70"/></div><div class="top-actions"><button id="connection-status" data-action="connection" class="connection-status">${window.moaDesktop?.nativeDropPaths ? "PC 원본 연결" : window.moaDesktop ? "브라우저 연결" : "미리보기 모드"}</button><button data-action="backup-menu" class="connection-status">백업·복원</button><span id="save-status">${icon("cloud-check")}모든 변경사항 저장됨</span><button class="icon-btn" data-action="help" title="사용 가이드">${icon("circle-help")}</button></div></header>
+<main><header class="topbar"><div class="breadcrumb">워크스페이스 ${icon("chevron-right")}<input id="page-title" aria-label="페이지 이름" value="${escape(p.title)}" maxlength="70"/></div><div class="top-actions"><button id="connection-status" data-action="connection" class="connection-status">${window.moaDesktop?.nativeDropPaths ? "PC 원본 연결" : window.moaDesktop ? "브라우저 연결" : "미리보기 모드"}</button><button data-action="backup-menu" class="connection-status">백업·복원</button><span id="save-status">${icon("circle-check")}모든 변경사항 저장됨</span><button class="icon-btn" data-action="help" title="사용 가이드">${icon("circle-help")}</button></div></header>
 <section class="toolbar" aria-label="삽입 도구모음"><div class="toolbar-group"><button data-add="text">${icon("type")}<span>텍스트</span></button><button data-add="drawer">${icon("archive")}<span>서랍</span></button><button data-add="note">${icon("sticky-note")}<span>메모</span></button><button data-add="checkbox">${icon("square-check")}<span>체크박스</span></button><div class="dropdown"><button data-menu="extras">${icon("circle-plus")}<span>더 삽입</span>${icon("chevron-down")}</button><div class="menu" id="extras-menu"><button data-action="media">${icon("image")}<span>미디어</span></button><button data-add="calendar">${icon("calendar-days")}<span>달력</span></button><button data-action="web">${icon("globe")}<span>인터넷 링크</span></button><button data-action="pagelink">${icon("notebook-tabs")}<span>페이지 링크</span></button></div></div><button data-add="table">${icon("table-2")}<span>표</span></button><div class="dropdown"><button data-menu="shapes">${icon("shapes")}<span>도형</span>${icon("chevron-down")}</button><div class="menu" id="shapes-menu">${Object.entries(shapes).map(([key,shape])=>`<button data-add="${key}">${icon(shape.icon)}${shape.name}</button>`).join('')}</div></div><div class="dropdown"><button data-menu="lines">${icon("columns-2")}<span>구분선</span>${icon("chevron-down")}</button><div class="menu" id="lines-menu"><button data-add="hline">${icon("minus")}가로 구분선</button><button data-add="vline">${icon("move-vertical")}세로 구분선</button></div></div></div><span class="toolbar-divider"></span><button class="link-tool" data-action="register">${icon("link")}<span>파일 연결</span></button><button class="link-tool" data-action="path-shortcut">${icon("clipboard-paste")}<span>경로 붙여넣기</span></button><div class="toolbar-right"><span>가로폭 맞춤 · 격자 20px</span>${icon("lock-keyhole")}<button class="dimensions" data-action="dimensions">${p.width} × ${p.height}</button></div></section>
 <div id="selection-tools" class="context-toolbar"></div>
 <div class="canvas-viewport" id="viewport"><div class="canvas-space" id="canvas-space"><div class="canvas" id="canvas" tabindex="0" aria-label="업무 보드" style="width:${p.width}px;height:${p.height}px">${p.blocks.filter(b=>!b.parentId).map(b=>blockHTML(b)).join("")}<div class="canvas-footer"><span>MADE FOR YOUR IDEAS</span><span>COTION WORKSPACE · ${String(state.pages.indexOf(p) + 1).padStart(2, "0")}</span></div></div></div></div>
@@ -1122,8 +1116,9 @@ async function registerMedia(files,parentId) {
 async function hydrateMedia() {
   const used = new Set(state.pages.flatMap(p => p.blocks.filter(b => b.type === "media").map(b => b.fileId)));
   for (const [id, url] of mediaURLs) if (!used.has(id)) { URL.revokeObjectURL(url); mediaURLs.delete(id); }
+  const targets = new Map([...document.querySelectorAll("[data-media]")].map(el => [el.closest(".block").dataset.id, el]));
   for (const b of page().blocks.filter(b => b.type === "media")) {
-    const target = [...document.querySelectorAll("[data-media]")].find(el => el.dataset.media === b.fileId && el.closest(".block").dataset.id === b.id);
+    const target = targets.get(b.id);
     if (!target || target.querySelector("img,video")) continue;
     try {
       let url = mediaURLs.get(b.fileId);
@@ -1174,7 +1169,7 @@ function calendarEvent(block, date) {
 function help() {
   modal(
     "코션 사용 가이드",
-    `<div class="help-body"><div class="help-intro">업무를 가로로 넓게 펼쳐보세요.</div><p>상단 도구모음에서 메모, 표, 도형과 가로·세로 구분선을 추가합니다. 개체를 선택한 뒤 이동·크기 손잡이를 드래그하면 20px 격자에 맞춥니다. 회전 손잡이는 15도 간격이며 설정 줄에서 각도를 입력하거나 90도씩 회전할 수 있습니다.</p><h3>Windows 단축키</h3><p>Ctrl+C/X/V 복사·잘라내기·붙여넣기, Ctrl+D 복제, Ctrl+Z 취소, Ctrl+Y 또는 Ctrl+Shift+Z 다시 실행, Ctrl+S 저장, Ctrl+N 새 페이지, Ctrl+O 파일 연결을 지원합니다. 텍스트에는 Ctrl+B/I/U 서식과 Ctrl+L/E/R 정렬을 적용합니다. 입력 중이 아닐 때 방향키는 1px, Shift+방향키는 10px 이동합니다.</p><h3>새 블록 삽입</h3><p>서랍을 추가하고 화살표를 눌러 펼치세요. 기존 개체를 담거나 파일·이미지·GIF·영상·메모·체크를 목록으로 추가하고 순서를 바꾸거나 꺼낼 수 있습니다. 개체 테두리를 클릭하면 선택됩니다.</p><p>체크박스에는 할 일과 완료 상태를 기록합니다. 더 삽입 메뉴에서 미디어·인터넷 링크·달력·페이지 링크를 추가하세요. 이미지와 GIF는 보드 안에 표시되고 영상은 재생 버튼으로 볼 수 있습니다. 미디어는 브라우저에 사본으로 저장하며 파일당 100MB까지 지원합니다. 달력 날짜를 누르면 일정 메모를 저장할 수 있습니다. 인터넷 링크는 새 탭으로, 페이지 링크는 해당 보드 페이지로 이동합니다.</p><h3>원본 파일을 바로가기로 연결</h3><p>Windows에서는 ZIP을 풀고 <strong>코션 실행.vbs</strong>를 실행하세요. 검은 창 없이 전용 HTML 창이 열리고 파일 카드 클릭 시 한글·Excel 등 PC 기본 프로그램으로 그 원본을 엽니다. 파일 내용을 내려받거나 사본으로 저장하지 않습니다.</p><p>전용 창에 파일을 끌어놓으면 원본 확인 창 없이 연결합니다. 파일 연결 버튼이나 경로 붙여넣기도 사용할 수 있습니다. 폴더를 미리 지정할 필요가 없습니다. 일반 브라우저에서는 드래그한 파일의 전체 경로를 받을 수 없습니다. 원본을 이동하거나 삭제하면 다시 연결해 주세요.</p><p>모아.html만 직접 열면 브라우저 미리보기 모드이며 PC 기본 프로그램 실행은 지원하지 않습니다. 지원 브라우저에서는 원본 핸들을, 그 외에는 등록 시점의 사본을 보관한다고 표시합니다.</p><h3>미리보기</h3><p>마우스를 올리거나 카드의 눈 버튼을 누르세요. PDF는 실제 첫 페이지를 이미지로 표시합니다. HWP/HWPX는 저장된 미리보기를, Word·Excel·PowerPoint는 저장된 이미지 또는 설치된 Office를 사용합니다. 미리보기가 지원되지 않으면 이유를 표시하고 텍스트·표로 전환합니다.</p><h3>페이지와 저장</h3><p>페이지 크기는 고정하고 가로폭에 맞춰 표시합니다. 긴 보드는 세로로 스크롤합니다. 작은 페이지 이름은 위쪽 경로에서 수정하고 아래 숫자 버튼으로 페이지를 이동하세요.</p><p>작업은 현재 창의 저장 공간에 자동 저장됩니다. 기존 Chrome·Edge와 새 전용 창, HTML 직접 실행은 저장 공간이 다릅니다. 백업·복원으로 옮기고 주기적으로 보관하세요. 사이트 데이터를 지우면 작업이 사라집니다. 클라우드 동기화는 제공하지 않습니다.</p></div>`,
+    `<div class="help-body"><div class="help-intro">업무를 가로로 넓게 펼쳐보세요.</div><p>상단 도구모음에서 메모, 표, 도형과 가로·세로 구분선을 추가합니다. 개체를 선택한 뒤 이동·크기 손잡이를 드래그하면 20px 격자에 맞춥니다. 회전 손잡이는 15도 간격이며 설정 줄에서 각도를 입력하거나 90도씩 회전할 수 있습니다.</p><h3>Windows 단축키</h3><p>Ctrl+C/X/V 복사·잘라내기·붙여넣기, Ctrl+D 복제, Ctrl+Z 취소, Ctrl+Y 또는 Ctrl+Shift+Z 다시 실행, Ctrl+S 저장, Ctrl+N 새 페이지, Ctrl+O 파일 연결을 지원합니다. 텍스트에는 Ctrl+B/I/U 서식과 Ctrl+L/E/R 정렬을 적용합니다. 입력 중이 아닐 때 방향키는 1px, Shift+방향키는 10px 이동합니다.</p><h3>새 블록 삽입</h3><p>서랍을 추가하고 화살표를 눌러 펼치세요. 기존 개체를 담거나 파일·이미지·GIF·영상·메모·체크를 목록으로 추가하고 순서를 바꾸거나 꺼낼 수 있습니다. 개체 테두리를 클릭하면 선택됩니다.</p><p>체크박스에는 할 일과 완료 상태를 기록합니다. 더 삽입 메뉴에서 미디어·인터넷 링크·달력·페이지 링크를 추가하세요. 이미지와 GIF는 보드 안에 표시되고 영상은 재생 버튼으로 볼 수 있습니다. 미디어는 브라우저에 사본으로 저장하며 파일당 100MB까지 지원합니다. 달력 날짜를 누르면 일정 메모를 저장할 수 있습니다. 인터넷 링크는 새 탭으로, 페이지 링크는 해당 보드 페이지로 이동합니다.</p><h3>원본 파일을 바로가기로 연결</h3><p>Windows에서는 ZIP을 풀고 <strong>코션 실행.vbs</strong>를 실행하세요. 검은 창 없이 전용 HTML 창이 열리고 파일 카드 클릭 시 한글·Excel 등 PC 기본 프로그램으로 그 원본을 엽니다. 파일 내용을 내려받거나 사본으로 저장하지 않습니다.</p><p>전용 창에 파일을 끌어놓으면 원본 확인 창 없이 연결합니다. 파일 연결 버튼이나 경로 붙여넣기도 사용할 수 있습니다. 폴더를 미리 지정할 필요가 없습니다. 일반 브라우저에서는 드래그한 파일의 전체 경로를 받을 수 없습니다. 원본을 이동하거나 삭제하면 다시 연결해 주세요.</p><p>코션.html만 직접 열면 브라우저 미리보기 모드이며 PC 기본 프로그램 실행은 지원하지 않습니다. 지원 브라우저에서는 원본 핸들을, 그 외에는 등록 시점의 사본을 보관한다고 표시합니다.</p><h3>미리보기</h3><p>마우스를 올리거나 카드의 눈 버튼을 누르세요. PDF는 실제 첫 페이지를 이미지로 표시합니다. HWP/HWPX는 저장된 미리보기를, Word·Excel·PowerPoint는 저장된 이미지 또는 설치된 Office를 사용합니다. 미리보기가 지원되지 않으면 이유를 표시하고 텍스트·표로 전환합니다.</p><h3>페이지와 저장</h3><p>페이지 크기는 고정하고 가로폭에 맞춰 표시합니다. 긴 보드는 세로로 스크롤합니다. 작은 페이지 이름은 위쪽 경로에서 수정하고 아래 숫자 버튼으로 페이지를 이동하세요.</p><p>작업은 현재 창의 저장 공간에 자동 저장됩니다. 기존 Chrome·Edge와 새 전용 창, HTML 직접 실행은 저장 공간이 다릅니다. 백업·복원으로 옮기고 주기적으로 보관하세요. 사이트 데이터를 지우면 작업이 사라집니다. 클라우드 동기화는 제공하지 않습니다.</p></div>`,
   );
 }
 async function fileLibrary() {

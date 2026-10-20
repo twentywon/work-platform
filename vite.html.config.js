@@ -8,7 +8,7 @@ export default defineConfig({
     {
       name: "moa-html-file",
       async closeBundle() {
-        await copyFile("html/index.html", "모아.html");
+        await copyFile("html/index.html", "코션.html");
       },
     },
   ],

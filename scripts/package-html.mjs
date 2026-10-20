@@ -1,31 +1,27 @@
 import JSZip from 'jszip';
 import {createHash} from 'node:crypto';
-import {readFile,readdir,mkdir,writeFile} from 'node:fs/promises';
+import {readFile,readdir,mkdir,writeFile,stat} from 'node:fs/promises';
 import path from 'node:path';
 const root=path.resolve(import.meta.dirname,'..');
 const zip=new JSZip();
-const html=await readFile(path.join(root,'모아.html'));
+const html=await readFile(path.join(root,'코션.html'));
 zip.file('licenses/Title-Font-OFL.txt',await readFile(path.join(root,'src/assets/OFL-NotoSerifKR.txt')));
 zip.file('licenses/Title-Font-Provenance.json',await readFile(path.join(root,'src/assets/title-font-provenance.json')));
-zip.file('모아.html',html);
 zip.file('코션.html',html);
-zip.file('코션 실행.cmd',await readFile(path.join(root,'windows/Start-Moa.cmd')));
-zip.file('코션 실행.vbs',await readFile(path.join(root,'windows/Start-Moa.vbs')));
-zip.file('모아 실행.cmd',await readFile(path.join(root,'windows/Start-Moa.cmd')));
-for(const name of ['Moa-Local.ps1','Moa-Worker.ps1','Moa-App.ps1','Moa-Display.ps1','Moa-Sdk.ps1','Start-Moa.vbs'])zip.file(name,await readFile(path.join(root,'windows',name)));
-zip.file('모아 실행.vbs',await readFile(path.join(root,'windows/Start-Moa.vbs')));
-async function addRuntime(relative){
- const absolute=path.join(root,'windows',relative);
- const {stat}=await import('node:fs/promises');
- if((await stat(absolute)).isDirectory())for(const name of (await readdir(absolute)).sort())await addRuntime(path.join(relative,name));
- else zip.file(relative.split(path.sep).join('/'),await readFile(absolute));
+zip.file('코션 실행.vbs',await readFile(path.join(root,'windows/Start-Cotion.vbs')));
+for(const name of ['Moa-Local.ps1','Moa-Worker.ps1','Moa-App.ps1','Moa-Display.ps1','Moa-Sdk.ps1'])zip.file(name,await readFile(path.join(root,'windows',name)));
+async function addFiles(relative, prefix = '', sourceRoot = root) {
+ const absolute = path.join(sourceRoot, relative);
+ if ((await stat(absolute)).isDirectory()) {
+  for (const name of (await readdir(absolute)).sort()) await addFiles(path.join(relative, name), prefix, sourceRoot);
+ } else zip.file(prefix + relative.split(path.sep).join('/'), await readFile(absolute));
 }
-await addRuntime('webview2');
-await addRuntime('assets');
-zip.file('사용방법.txt',`코션 v0.8 · Windows 10/11
+await addFiles('webview2', '', path.join(root, 'windows'));
+await addFiles('assets/cotion.ico', '', path.join(root, 'windows'));
+zip.file('사용방법.txt',`코션 v0.8.1 · Windows 10/11
 
-1. ZIP 전체를 압축 해제하세요. 이전 코션 창과 검은 연결 도우미 창은 먼저 닫으세요.
-2. 코션 실행.vbs를 더블클릭하세요. 검은 창 없이 코션 전용 HTML 창이 열립니다. 창을 닫으면 연결 도우미도 종료됩니다. EXE 빌드나 Node.js 설치는 필요하지 않습니다. 코션 실행.cmd도 같은 전용 창을 실행합니다.
+1. ZIP 전체를 새 빈 폴더에 압축 해제하세요. 구버전 폴더에 덮어쓰면 이전 파일이 남습니다. 이전 코션 창과 검은 연결 도우미 창은 먼저 닫으세요.
+2. 코션 실행.vbs를 더블클릭하세요. 검은 창 없이 코션 전용 HTML 창이 열립니다. 창을 닫으면 연결 도우미도 종료됩니다. EXE 빌드나 Node.js 설치는 필요하지 않습니다. 실행 진입점은 코션 실행.vbs 하나입니다.
 시작 시 공식 WebView2 SDK DLL 4개의 SHA256을 확인하고 해당 파일의 다운로드 차단 표시만 자동 해제합니다. 0x80131515 오류가 계속되면 ZIP 파일 우클릭 → 속성 → 차단 해제 후 새 폴더에 다시 압축 해제하세요. 일반 문서나 시스템 보안 설정은 바꾸지 않습니다.
 3. Microsoft Edge WebView2 Runtime이 설치되어 있어야 합니다. 없거나 구버전이면 Microsoft 공식 WebView2 안내에 따라 설치/업데이트하세요: https://developer.microsoft.com/microsoft-edge/webview2/
 4. 전용 창에 탐색기 파일을 끌어놓으면 원본 확인 창 없이 바로 연결합니다. 파일 연결 버튼으로도 등록할 수 있습니다. 카드 클릭은 등록한 원본을 Windows 기본 프로그램으로 엽니다. 원본 문서를 복사하거나 다운로드하지 않습니다. 폴더 연결은 필요하지 않습니다. 경로 붙여넣기도 가능합니다.
@@ -49,14 +45,7 @@ Windows의 실제 WebView2 시작·탐색기 드래그·연결 프로그램·Off
 Microsoft WebView2 SDK 재배포 DLL의 라이선스와 공식 출처/해시는 webview2 폴더에 포함했습니다.
 `);
 const items=['windows','src','desktop','build','tests','scripts','index.html','package.json','package-lock.json','README.md','AGENTS.md','.gitattributes','.gitignore','vite.config.js','vite.html.config.js','playwright.config.js','playwright.html.config.js','electron-builder.yml'];
-async function add(relative){
- const absolute=path.join(root,relative);
- const {stat}=await import('node:fs/promises');
- const info=await stat(absolute);
- if(info.isDirectory())for(const name of (await readdir(absolute)).sort())await add(path.join(relative,name));
- else zip.file('개발용소스/'+relative.split(path.sep).join('/'),await readFile(absolute));
-}
-for(const item of items)await add(item);
+for(const item of items)await addFiles(item, '개발용소스/');
 const pkg=JSON.parse(await readFile(path.join(root,'package.json'),'utf8'));
 const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).map(p=>[p.type,p.value]));
 const timestamp=parts.year+parts.month+parts.day+'-'+parts.hour+parts.minute+parts.second;
@@ -65,10 +54,11 @@ await mkdir(path.dirname(out),{recursive:true});
 const buffer=await zip.generateAsync({type:'nodebuffer',compression:'DEFLATE',compressionOptions:{level:6}});
 await writeFile(out,buffer);
 const verified=await JSZip.loadAsync(await readFile(out),{checkCRC32:true});
-for(const required of ['코션.html','코션 실행.vbs','코션 실행.cmd','assets/cotion.ico','assets/cotion.png','모아.html','개발용소스/src/main.js','Moa-Worker.ps1','Moa-Local.ps1','Moa-App.ps1','Moa-Display.ps1','Moa-Sdk.ps1','모아 실행.cmd','모아 실행.vbs','Start-Moa.vbs','webview2/Microsoft.Web.WebView2.Core.dll','webview2/Microsoft.Web.WebView2.WinForms.dll','webview2/x64/WebView2Loader.dll','webview2/x86/WebView2Loader.dll','webview2/LICENSE.txt','webview2/PROVENANCE.json'])if(!verified.file(required))throw Error('ZIP content missing: '+required);
+for(const required of ['코션.html','코션 실행.vbs','assets/cotion.ico','개발용소스/src/main.js','Moa-Worker.ps1','Moa-Local.ps1','Moa-App.ps1','Moa-Display.ps1','Moa-Sdk.ps1','webview2/Microsoft.Web.WebView2.Core.dll','webview2/Microsoft.Web.WebView2.WinForms.dll','webview2/x64/WebView2Loader.dll','webview2/x86/WebView2Loader.dll','webview2/LICENSE.txt','webview2/PROVENANCE.json'])if(!verified.file(required))throw Error('ZIP content missing: '+required);
+for(const obsolete of ['모아.html','모아 실행.vbs','모아 실행.cmd','코션 실행.cmd','Start-Moa.vbs','Start-Cotion.vbs','assets/cotion.png'])if(verified.file(obsolete))throw Error('Obsolete ZIP entry: '+obsolete);
 const ico=await verified.file('assets/cotion.ico').async('nodebuffer');
 if(ico.readUInt16LE(0)!==0||ico.readUInt16LE(2)!==1||ico.readUInt16LE(4)<7)throw Error('Invalid multi-resolution taskbar icon');
 const provenance=JSON.parse(await verified.file('webview2/PROVENANCE.json').async('string'));
 for(const [name,expected] of Object.entries(provenance.sha256))if(createHash('sha256').update(await verified.file('webview2/'+name).async('nodebuffer')).digest('hex')!==expected)throw Error('SDK hash mismatch: '+name);
-if(!Buffer.from(await verified.file('모아.html').async('uint8array')).equals(html))throw Error('HTML verification failed');
+if(!Buffer.from(await verified.file('코션.html').async('uint8array')).equals(html))throw Error('HTML verification failed');
 console.log(`ZIP created and verified: ${out} (${buffer.length} bytes)`);

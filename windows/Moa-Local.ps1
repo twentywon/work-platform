@@ -89,7 +89,7 @@ function Find-DroppedFile($Metadata) {
 function New-DialogOwner {
     Add-Type -AssemblyName System.Windows.Forms
     $owner = New-Object System.Windows.Forms.Form
-    $owner.Text = '모아 파일 연결'
+    $owner.Text = '코션 파일 연결'
     $owner.Size = New-Object System.Drawing.Size(1, 1)
     $owner.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
     $owner.ShowInTaskbar = $false
@@ -105,7 +105,7 @@ function Select-NativeFiles {
     $dialog = New-Object System.Windows.Forms.OpenFileDialog
     try {
         Write-Host '파일 선택 창을 표시합니다. 브라우저 앞의 Windows 창에서 선택해 주세요.'
-        $dialog.Title = '모아 - 바로가기로 연결할 원본 파일 선택'
+        $dialog.Title = '코션 - 바로가기로 연결할 원본 파일 선택'
         $dialog.Multiselect = $true
         $dialog.RestoreDirectory = $true
         $dialog.Filter = '업무 문서 및 이미지|' + (($supported | ForEach-Object { '*' + $_ }) -join ';')
@@ -118,7 +118,7 @@ function Select-NativeFolder {
     $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
     try {
         Write-Host '폴더 선택 창을 표시합니다. 브라우저 앞의 Windows 창에서 선택해 주세요.'
-        $dialog.Description = '모아 - 드래그할 파일이 있는 폴더를 선택하세요. 하위 폴더도 연결합니다.'
+        $dialog.Description = '코션 - 드래그할 파일이 있는 폴더를 선택하세요. 하위 폴더도 연결합니다.'
         $dialog.ShowNewFolderButton = $false
         if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) { return $dialog.SelectedPath }
         return ''
@@ -142,11 +142,11 @@ $rng.GetBytes($tokenBytes)
 $rng.Dispose()
 $token = ([BitConverter]::ToString($tokenBytes)).Replace('-', '').ToLowerInvariant()
 $baseUrl = "http://127.0.0.1:$Port"
-$htmlFile = Join-Path $PSScriptRoot '모아.html'
-if (-not (Test-Path -LiteralPath $htmlFile)) { throw 'ZIP을 먼저 압축 해제하고 모아.html과 실행 파일을 같은 폴더에 두세요.' }
+$htmlFile = Join-Path $PSScriptRoot '코션.html'
+if (-not (Test-Path -LiteralPath $htmlFile)) { throw 'ZIP을 먼저 압축 해제하고 코션.html과 실행 파일을 같은 폴더에 두세요.' }
 $listener = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, $Port)
-try { $listener.Start() } catch { throw "모아 연결 도우미를 시작할 수 없습니다. 이미 실행 중이면 $baseUrl 을 여세요. 자세한 내용: $($_.Exception.Message)" }
-Write-Host "모아 실행 중: $baseUrl"
+try { $listener.Start() } catch { throw "코션 연결 도우미를 시작할 수 없습니다. 이미 실행 중이면 $baseUrl 을 여세요. 자세한 내용: $($_.Exception.Message)" }
+Write-Host "코션 실행 중: $baseUrl"
 Write-Host '이 창을 열어 두세요. 종료하려면 Ctrl+C를 누르거나 창을 닫으세요.'
 if (-not $NoBrowser) { Start-Process $baseUrl }
 $script:running = $true
@@ -192,7 +192,7 @@ try {
                 continue
             }
             if ($method -ne 'POST' -or $headers['x-moa-token'] -cne $token -or $headers['content-type'] -notlike 'application/json*') {
-                Send-Json $stream @{ error = '등록된 모아 화면에서만 요청할 수 있습니다.' } 403; continue
+                Send-Json $stream @{ error = '등록된 코션 화면에서만 요청할 수 있습니다.' } 403; continue
             }
             $length = 0
             if (-not [int]::TryParse($headers['content-length'], [ref]$length) -or $length -lt 0 -or $length -gt 1048576 -or $headers.ContainsKey('transfer-encoding')) { throw '잘못된 요청 크기입니다.' }
@@ -208,7 +208,7 @@ try {
             switch ($route) {
                 '/api/shutdown' { Send-Json $stream @{stopping=$true}; $script:running = $false }
                 '/api/status' {
-                    Send-Json $stream @{ version = '0.8.0'; folderCount = $script:roots.Count; folders = @($script:roots); apartment = [Threading.Thread]::CurrentThread.GetApartmentState().ToString() }
+                    Send-Json $stream @{ version = '0.8.1'; folderCount = $script:roots.Count; folders = @($script:roots); apartment = [Threading.Thread]::CurrentThread.GetApartmentState().ToString() }
                 }
                 '/api/select-start' { Send-Json $stream (Start-Worker 'select') }
                 '/api/preview-start' {

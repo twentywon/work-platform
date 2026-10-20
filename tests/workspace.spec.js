@@ -818,3 +818,17 @@ test('object keyboard copy/cut/paste preserves drawer references across pages',a
  await page.locator('.block-drawer > .edge-right').click();await page.locator('#canvas').focus();await page.keyboard.press('Control+x');await expect(page.locator('.block-drawer')).toHaveCount(0);
  await page.keyboard.press('Control+z');await expect(page.locator('.block-drawer')).toHaveCount(1);
 });
+
+test('icon rendering keeps existing SVGs while editing and fills dynamic controls', async ({page}) => {
+  await expect(page.locator('i[data-lucide]')).toHaveCount(0);
+  await page.locator('[data-add=note]').click();
+  await page.evaluate(() => {window.__existingIcon = document.querySelector('.workspace-switch svg');});
+  await page.locator('.block-note').last().locator('.editable').fill('아이콘을 다시 만들지 않는 저장');
+  await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');
+  expect(await page.evaluate(() => document.querySelector('.workspace-switch svg') === window.__existingIcon)).toBe(true);
+  await expect(page.locator('#save-status svg.lucide-circle-check')).toHaveCount(1);
+  await expect(page.locator('i[data-lucide]')).toHaveCount(0);
+  await page.locator('[data-action=help]').first().click();
+  await expect(page.locator('[role=dialog]')).toBeVisible();
+  await expect(page.locator('i[data-lucide]')).toHaveCount(0);
+});

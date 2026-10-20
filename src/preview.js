@@ -28,7 +28,7 @@ async function createPreview(record) {
         result = { type:"page-image", url, source:page.source };
         cache.set(key, result); return result;
       } catch (e) { imageUnavailable = e.message; }
-    } else imageUnavailable = "저장된 첫 페이지 이미지가 없습니다. 설치된 Office를 이용하려면 모아 실행.cmd로 실행해 주세요.";
+    } else imageUnavailable = "저장된 첫 페이지 이미지가 없습니다. 설치된 Office를 이용하려면 코션 실행.vbs로 실행해 주세요.";
   }
   if (
     file.type.startsWith("image/") ||

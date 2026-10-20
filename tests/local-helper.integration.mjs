@@ -12,7 +12,7 @@ const origin='http://127.0.0.1:17844';
 const original=path.join(root,'원본 문서.txt');await writeFile(original,'원본 내용');
 await writeFile(path.join(profile,'links.json'),JSON.stringify({entries:{'approved-file':original},roots:[]}));
 for(const name of ['Moa-Local.ps1','Moa-Worker.ps1'])await cp('windows/'+name,path.join(root,name));
-await cp('모아.html',path.join(root,'모아.html'));
+await cp('코션.html',path.join(root,'코션.html'));
 const executable=process.env.MOA_POWERSHELL||(process.platform==='win32'?'powershell.exe':'pwsh');
 let output='';
 const child=spawn(executable,['-NoLogo','-NoProfile','-File',path.join(root,'Moa-Local.ps1'),'-NoBrowser','-Port','17844','-DataDirectory',profile],{env:process.env});
@@ -37,7 +37,7 @@ try {
   assert.equal((await request('preview-start',{id:original})).status,400);
   assert.equal((await request('paths',{paths:['relative.txt']})).status,400);
   const status=await(await request('status')).json();
-  assert.equal(status.version,'0.8.0');assert.equal(status.folderCount,0);
+  assert.equal(status.version,'0.8.1');assert.equal(status.folderCount,0);
   const direct=await(await request('paths',{paths:['"'+original+'"']})).json();
   assert.equal(direct.files[0].id,'approved-file');assert.equal(direct.files[0].path,original);
   await writeFile(original,'수정된 원본의 최신 내용');

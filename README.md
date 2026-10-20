@@ -4,8 +4,8 @@
 
 ## Windows 10/11에서 실행
 
-1. ZIP 전체를 압축 해제하고 이전 코션 창과 검은 연결 도우미 창을 닫습니다.
-2. **코션 실행.vbs**를 더블클릭합니다. 검은 창 없이 전용 HTML 창이 열리며, 코션 창을 닫으면 연결 도우미도 종료됩니다. CMD도 같은 창을 실행합니다. EXE 빌드나 Node.js 설치는 필요하지 않습니다.
+1. ZIP 전체를 **새 빈 폴더에** 압축 해제하고 이전 코션 창과 검은 연결 도우미 창을 닫습니다.
+2. **코션 실행.vbs**를 더블클릭합니다. 검은 창 없이 전용 HTML 창이 열리며, 코션 창을 닫으면 연결 도우미도 종료됩니다. 실행 진입점은 이 파일 하나입니다. EXE 빌드나 Node.js 설치는 필요하지 않습니다.
 시작 전에 공식 SDK DLL 4개의 고정 SHA256을 검사한 뒤 해당 DLL에 한해 다운로드 영역 표시를 해제합니다. Windows의 `0x80131515` DLL 로드 오류를 방지하기 위한 처리입니다. 해제가 실패하면 ZIP 우클릭 → 속성 → **차단 해제** 후 새 폴더에 다시 압축 해제하세요. 시스템 보안 설정과 사용자 문서는 변경하지 않습니다.
 
 3. 설치된 **Microsoft Edge WebView2 Runtime**을 사용합니다. 없거나 오래된 경우 [Microsoft 공식 안내](https://developer.microsoft.com/microsoft-edge/webview2/)에서 설치·업데이트하세요. 공식 SDK DLL과 라이선스·출처·해시는 ZIP의 `webview2/`에 포함합니다.
@@ -102,10 +102,16 @@ npm run test:local
 npm run package:html
 ```
 
-`npm run package:html`은 HTML, VBS/CMD/PowerShell 실행 스크립트, Microsoft WebView2 SDK DLL, 한국어 안내와 수정 가능한 소스를 ZIP으로 만듭니다. PDF 렌더러와 워커 코드는 HTML에 포함하므로 실행 PC에서 추가 다운로드하지 않습니다. ZIP CRC와 HTML 일치를 검사하고 GitHub 다운로드 링크로 전달합니다.
+`npm run package:html`은 HTML, VBS/PowerShell 실행 스크립트, Microsoft WebView2 SDK DLL, 한국어 안내와 수정 가능한 소스를 ZIP으로 만듭니다. PDF 렌더러와 워커 코드는 HTML에 포함하므로 실행 PC에서 추가 다운로드하지 않습니다. ZIP CRC와 HTML 일치를 검사하고 GitHub 다운로드 링크로 전달합니다.
 
 브라우저와 실제 PowerShell 서버에서 원본 경로 등록·작업 프로세스 수명·다운로드 없는 열기 요청·첫 페이지 렌더링·저장을 검증합니다. PDF 테스트는 빨간 첫 페이지와 파란 두 번째 페이지를 가진 실제 PDF의 픽셀을 검사합니다. HWP/HWPX 테스트는 저장된 이미지 스트림을 추출합니다. Linux에서는 WebView2 파일 전달 경계를 모의하고 실제 PowerShell 경로 등록·읽기와 연결합니다. Windows WebView2 시작·실제 드래그·기본 프로그램 실행·Office COM은 Windows에서 확인해야 합니다. 관리 Chromium의 file:// 차단으로 HTML 직접 실행 테스트는 브리지 없는 Electron Chromium 창을 사용합니다.
 
 Electron 개발 소스는 desktop/에 유지하며 `npm run desktop`으로 실행합니다. 사용자 요청 없이 EXE를 새로 만들지 않습니다.
 
 SDK 준비 회귀 검증은 `pwsh -NoProfile -File tests/sdk-preparation.ps1`로 실행합니다. 실제 DLL 해시·누락·변조 거부와 로드 전 준비 순서를 검사합니다. Windows에서는 NTFS Zone.Identifier를 실제 생성·해제하며, Linux에서는 Unblock-File 경계만 모의합니다.
+
+### v0.8.1 배포 정리
+
+중복 모아 실행 파일·CMD·HTML을 제외하고 `코션 실행.vbs`와 `코션.html`을 각 하나씩 제공합니다. PowerShell, webview2, assets, licenses 폴더는 원본 파일 열기·전용 창·아이콘·라이선스에 필요한 구성 요소이므로 유지합니다. 개발용소스는 수정 가능한 프로젝트입니다. 이전 폴더에 덮어쓰면 오래된 파일이 남으므로 새 빈 폴더에 압축을 해제하세요. 기존 `%LOCALAPPDATA%\MoaWeb`와 IndexedDB 저장 이름은 변경하지 않습니다.
+
+사용하는 아이콘만 번들에 포함하고 SVG 템플릿을 재사용합니다. 이미 표시된 SVG는 재생성하지 않으며, 저장 상태 갱신은 해당 영역만 처리합니다. 미디어 요소는 한 번에 찾아 블록 ID로 연결하므로 미디어마다 전체 DOM을 다시 검색하지 않습니다.
