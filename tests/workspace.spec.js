@@ -938,8 +938,16 @@ test('right-click copy, paste and cut preserve linked objects and original file 
 });
 
 
-test('new regular shapes preserve aspect in size fields and can opt into free proportions',async({page})=>{
- await page.locator('[data-menu=shapes]').click();await page.locator('[data-add=triangle]').click();const block=page.locator('.block-triangle').last();expect(await block.evaluate(el=>[parseFloat(el.style.width),parseFloat(el.style.height)])).toEqual([200,200]);
- await editSetting(page,'w',300);expect(await block.evaluate(el=>[parseFloat(el.style.width),parseFloat(el.style.height)])).toEqual([300,300]);await expect(block.locator('.shape-surface')).toHaveAttribute('preserveAspectRatio','xMidYMid meet');
- await openObjectMenu(page);await page.locator('[data-prop=keepAspect]').uncheck();await editSetting(page,'w',360);expect(await block.evaluate(el=>[parseFloat(el.style.width),parseFloat(el.style.height)])).toEqual([360,300]);await expect(block.locator('.shape-surface')).toHaveAttribute('preserveAspectRatio','none');
+test('shapes start regular then resize freely by fields and handles, including legacy aspect flags',async({page})=>{
+ await page.locator('[data-menu=shapes]').click();await page.locator('[data-add=triangle]').click();let block=page.locator('.block-triangle').last();expect(await block.evaluate(el=>[parseFloat(el.style.width),parseFloat(el.style.height)])).toEqual([200,200]);
+ await editSetting(page,'w',300);expect(await block.evaluate(el=>[parseFloat(el.style.width),parseFloat(el.style.height)])).toEqual([300,200]);await expect(block.locator('.shape-surface')).toHaveAttribute('preserveAspectRatio','none');await expect(page.locator('[data-prop=keepAspect]')).toHaveCount(0);
+ await page.keyboard.press('Escape');let handle=await block.locator('.resize-handle').boundingBox();await page.mouse.move(handle.x+3,handle.y+3);await page.mouse.down();await page.mouse.move(handle.x+65,handle.y+3,{steps:5});await page.mouse.up();expect(await block.evaluate(el=>parseFloat(el.style.width))).toBeGreaterThan(300);expect(await block.evaluate(el=>parseFloat(el.style.height))).toBe(200);
+ await seedInteractionBoard(page,[{id:'old-aspect',type:'rect',x:100,y:100,w:200,h:200,keepAspect:true}]);block=page.locator('[data-id=old-aspect]');await block.locator(':scope > .edge-right').click();await editSetting(page,'h',120);expect(await block.evaluate(el=>[parseFloat(el.style.width),parseFloat(el.style.height)])).toEqual([200,120]);await expect(block.locator('.shape-surface')).toHaveAttribute('preserveAspectRatio','none');
+});
+test('context layer steps and rotation controls preserve geometry, selection and undo',async({page})=>{
+ await seedInteractionBoard(page,[{id:'a',type:'rect',x:100,y:100,w:200,h:120},{id:'b',type:'note',x:180,y:140},{id:'c',type:'note',x:500,y:350}]);
+ const order=()=>page.locator('#canvas > .block').evaluateAll(nodes=>nodes.map(el=>el.dataset.id));const block=page.locator('[data-id=a]'),geometry=()=>block.evaluate(el=>[el.style.left,el.style.top,el.style.width,el.style.height]);const original=await geometry();
+ await block.locator(':scope > .edge-left').click();const point=await boardCoordinates(page,220,170);const front=()=>page.evaluate(p=>document.elementsFromPoint(p.x,p.y).map(el=>el.closest('.block')?.dataset.id).find(Boolean),point);expect(await front()).toBe('b');await openObjectMenu(page);await page.locator('[data-block-action=forward]').click();expect(await order()).toEqual(['b','a','c']);expect(await front()).toBe('a');await page.locator('[data-block-action=backward]').click();expect(await order()).toEqual(['a','b','c']);
+ await page.locator('[data-block-action=rotate-left]').click();await expect(page.locator('#rotation-angle')).toHaveValue('-90');expect(await geometry()).toEqual(original);await page.locator('[data-block-action=rotation-reset]').click();await expect(page.locator('#rotation-angle')).toHaveValue('0');expect(await geometry()).toEqual(original);
+ await page.keyboard.press('Escape');await page.keyboard.press('Control+z');await openObjectMenu(page);await expect(page.locator('#rotation-angle')).toHaveValue('-90');
 });

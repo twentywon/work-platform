@@ -14,7 +14,7 @@ export const shapes = {
  heart: {name:'하트',icon:'heart',element:'path',attrs:'d="M50 96C38 84 2 57 2 28C2 0 34 -5 50 21C66 -5 98 0 98 28C98 57 62 84 50 96Z"'},
 };
 export const isShape = type => Object.hasOwn(shapes,type);
-export function shapeMarkup(type, keepAspect = false) {
+export function shapeMarkup(type) {
  const s=shapes[type];if(!s)return '';
- return `<svg class="shape-surface" viewBox="0 0 100 100" preserveAspectRatio="${keepAspect?'xMidYMid meet':'none'}" aria-hidden="true"><${s.element} ${s.attrs} fill="var(--shape-fill,var(--block-color))" stroke="var(--shape-stroke,#8594ad)" stroke-width="var(--shape-stroke-width,1px)" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+ return `<svg class="shape-surface" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><${s.element} ${s.attrs} fill="var(--shape-fill,var(--block-color))" stroke="var(--shape-stroke,#8594ad)" stroke-width="var(--shape-stroke-width,1px)" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
 }

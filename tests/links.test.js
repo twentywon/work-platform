@@ -5,7 +5,7 @@ import {makeClipboard,readClipboard,pasteBlocks} from '../src/clipboard.js';
 import {readBackup} from '../src/backup.js';
 test('regular polygons have equal edges and new shapes start in proportion',()=>{
  for(const n of [3,5,6]){const points=regularPoints(n).split(' ').map(p=>p.split(',').map(Number));const edges=points.map((p,i)=>Math.hypot(p[0]-points[(i+1)%n][0],p[1]-points[(i+1)%n][1]));assert.ok(Math.max(...edges)-Math.min(...edges)<1e-9);}
- for(const type of Object.keys(shapes)){const b=makeBlock(type);assert.equal(b.w,b.h);assert.equal(b.keepAspect,true);}
+ for(const type of Object.keys(shapes)){const b=makeBlock(type);assert.equal(b.w,b.h);assert.equal(b.keepAspect,undefined);}
 });
 test('unified links preserve legacy cards, reject executable URLs and detach without losing content',()=>{
  assert.deepEqual(blockLink({type:'web',url:'example.com'}),{kind:'web',url:'https://example.com/'});

@@ -11,7 +11,7 @@ import {makeBackup,readBackup} from "./backup.js";
 import "./local-bridge.js";
 import { blockNames, webURL, mediaKind, monthKey, shiftMonth, monthDays } from "./blocks.js";
 import {refreshIcons} from "./icons.js";
-import { uid, makePage, makeBlock, fitScale, clampBlock, snap, rotatedDelta, drawerChildren, putInDrawer, takeOutOfDrawer, deleteBlocks, duplicateBlock, rotatedBounds, groupDelta, rotateBlock } from "./model.js";
+import { uid, makePage, makeBlock, fitScale, clampBlock, snap, rotatedDelta, drawerChildren, putInDrawer, takeOutOfDrawer, deleteBlocks, duplicateBlock, rotatedBounds, groupDelta, rotateBlock, reorderBlocks } from "./model.js";
 import { read, write, getFile, allFiles, restoreWorkspace } from "./storage.js";
 import { previewFile, extension } from "./preview.js";
 const $ = (s) => document.querySelector(s);
@@ -206,7 +206,7 @@ function blockHTML(b, nested = false) {
     content = `<div class="note-label">${icon("sticky-note")}<span>${escape(b.label || "QUICK NOTE")}</span></div>${editable(b.text, "note-text")}<span class="note-corner"></span>`;
   if (b.type === "text") content = editable(b.text, b.role || "");
   if (isShape(b.type))
-    content = shapeMarkup(b.type,!!b.keepAspect)+editable(b.text || "내용을 입력하세요.", "shape-text");
+    content = shapeMarkup(b.type)+editable(b.text || "내용을 입력하세요.", "shape-text");
   if (b.type === "table") {
     const rows = b.cells || [
       ["할 일", "상태", "비고"],
@@ -524,7 +524,7 @@ function contextToolbar() {
  const choice=(prop,label,options,value)=>`<label>${label}<select data-prop="${prop}" aria-label="${label}">${options.map(([key,text])=>`<option value="${key}" ${String(value)===String(key)?'selected':''}>${text}</option>`).join('')}</select></label>`;
  const number=(prop,label,value,min,max,step=1)=>`<label>${label}<input data-prop="${prop}" aria-label="${label}" type="number" min="${min}" max="${max}" step="${step}" value="${Number.isFinite(Number(value))?Number(value):min}" ${b.locked&&['x','y','w','h'].includes(prop)?'disabled':''}/></label>`;
  const color=(prop,label,value)=>`<label>${label}<input data-prop="${prop}" aria-label="${label}" type="color" value="${hexColor(value)?value:'#303c50'}"/></label>`;
- const button=(action,title,content)=>`<button data-block-action="${action}" title="${title}" aria-label="${title}" ${action==='rotate'&&b.locked?'disabled':''}>${content}</button>`;
+ const button=(action,title,content)=>`<button data-block-action="${action}" title="${title}" aria-label="${title}" ${['rotate','rotate-left','rotation-reset'].includes(action)&&b.locked?'disabled':''}>${content}</button>`;
  const drawers=page().blocks.filter(d=>d.type==='drawer'&&!selectedIds.has(d.id));
  box.innerHTML=historyButtons()+`<div class="block-controls" role="toolbar" aria-label="선택 개체 설정"><strong>${single?blockNames[b.type]:blocks.length+'개 선택'}</strong>
  ${canText?`${choice('text:font','글꼴',Object.entries(fonts).map(([key,v])=>[key,v[0]]),format.font)}${number('text:size','글자 크기',format.size,8,120)}${[['bold','굵게','<b>B</b>'],['italic','기울임','<i>I</i>'],['underline','밑줄','<u>U</u>'],['strike','취소선','<s>S</s>']].map(([key,label,content])=>`<button data-format-toggle="${key}" title="${label}" aria-label="${label}" aria-pressed="${!!format[key]}">${content}</button>`).join('')}<button data-line-toggle aria-label="줄 체크박스" title="커서가 있는 줄에 체크박스 적용/해제" ${single&&['text','note','table'].includes(b.type)||single&&isShape(b.type)?'':'disabled'}>${icon('square-check')}</button>${color('text:color','글자색',b.format?.color||'#303c50')}${choice('text:align','글자 정렬',[['left','왼쪽'],['center','가운데'],['right','오른쪽'],['justify','양쪽']],format.align)}${number('text:lineHeight','줄 간격',b.format?.lineHeight||1.8,1,3,.1)}<span class="control-divider"></span>`:''}
@@ -542,11 +542,11 @@ function contextToolbar() {
  ${button('cut','잘라내기 (Ctrl+X)','잘라내기 <kbd>Ctrl+X</kbd>')}${button('copy','복사 (Ctrl+C)','복사 <kbd>Ctrl+C</kbd>')}<button data-block-action="paste-objects" ${objectClipboard?'':'disabled'} title="이 앱에서 복사한 개체를 붙여넣습니다. 외부 내용은 Ctrl+V를 사용하세요.">개체 붙여넣기 <kbd>Ctrl+V</kbd></button>
  ${single?`${button('attach-link',blockLink(b)?'링크 수정 (Ctrl+K)':'링크 삽입 (Ctrl+K)',icon('link')+(blockLink(b)?'링크 수정…':'링크 삽입…'))}${blockLink(b)?`${button('follow-link','링크 열기','링크 열기')}${button('remove-link','링크 제거','링크 제거')}`:''}${button('edit-content','내용 편집 (F2)','내용 편집 <kbd>F2</kbd>')}`:''}
  <strong>크기와 배치</strong>
- ${single&&!b.parentId?`${number('x','X',Math.round(b.x),0,page().width)}${number('y','Y',Math.round(b.y),0,page().height)}${number('w','너비',Math.round(b.w),b.type==='calendar'?220:20,page().width)}${number('h','높이',Math.round(b.h),b.type==='calendar'?180:8,page().height)}<label>회전<input id="rotation-angle" data-prop="rotation" aria-label="회전 각도" type="number" min="-360" max="360" step="15" value="${Number.isFinite(Number(b.rotation))?Number(b.rotation):0}" ${b.locked?'disabled':''}/>°</label>${button('rotate','90도 회전',icon('rotate-cw')+'90도 회전')}`:''}
+ ${single&&!b.parentId?`${number('x','X',Math.round(b.x),0,page().width)}${number('y','Y',Math.round(b.y),0,page().height)}${number('w','너비',Math.round(b.w),b.type==='calendar'?220:20,page().width)}${number('h','높이',Math.round(b.h),b.type==='calendar'?180:8,page().height)}<label>회전<input id="rotation-angle" data-prop="rotation" aria-label="회전 각도" type="number" min="-360" max="360" step="15" value="${Number.isFinite(Number(b.rotation))?Number(b.rotation):0}" ${b.locked?'disabled':''}/>°</label>${button('rotate','오른쪽으로 90도 회전',icon('rotate-cw')+'오른쪽 90°')}${button('rotate-left','왼쪽으로 90도 회전','왼쪽 90°')}${button('rotation-reset','회전 초기화','회전 초기화')}`:''}
 
- ${single&&isShape(b.type)?`<label><input data-prop="keepAspect" aria-label="비율 유지" type="checkbox" ${b.keepAspect?'checked':''}/>비율 유지</label>`:''}
+
  <label><input data-prop="locked" aria-label="위치 잠금" type="checkbox" ${blocks.every(b=>b.locked)?'checked':''}/>위치 잠금</label>
- ${button('front','맨 앞으로','맨 앞으로')}${button('back','맨 뒤로','맨 뒤로')}
+ ${button('forward','한 단계 앞으로','한 단계 앞으로')}${button('backward','한 단계 뒤로','한 단계 뒤로')}${button('front','맨 앞으로','맨 앞으로')}${button('back','맨 뒤로','맨 뒤로')}
  ${drawers.length&&blocks.every(b=>b.type!=='drawer')?`<select data-put-drawer aria-label="선택 개체를 서랍에 넣기"><option value="">서랍에 넣기…</option>${drawers.map(d=>`<option value="${d.id}">${escape(d.name||'새 서랍')}</option>`).join('')}</select>`:''}
  ${single&&b.parentId?button('extract','보드로 꺼내기','꺼내기'):''}
  ${button('duplicate','복제',icon('copy')+'복제')}${button('delete',blocks.some(b=>b.type==='drawer')?'서랍과 내용 삭제':'삭제',icon('trash-2')+'삭제')}${hasDeletionUndo()?button('undo-delete','삭제 취소',icon('undo-2')+'삭제 취소'):''}</div>`;
@@ -567,7 +567,7 @@ function contextToolbar() {
    else if(prop==='opacity')block.opacity=value/100;
    else if(prop==='direction'){if(block.type!==value)[block.w,block.h]=[block.h,block.w];block.type=value;}
    else if(prop==='rotation'){if(!block.locked)rotateBlock(block,value);}
-   else if(['x','y','w','h'].includes(prop)){if(!block.locked){const ratio=block.w/block.h;block[prop]=value;if(block.keepAspect&&prop==='w')block.h=value/ratio;if(block.keepAspect&&prop==='h')block.w=value*ratio;clampBlock(block,page());}}
+   else if(['x','y','w','h'].includes(prop)){if(!block.locked){block[prop]=value;clampBlock(block,page());}}
    else block[prop]=value;
   }
   renderBlocks();persist();
@@ -588,6 +588,8 @@ function contextToolbar() {
   if(a==='clear-fill')for(const block of blocks)block.background='transparent';
   if(a==='extract')takeOutOfDrawer(page(),b.id);
   if(a==='rotate'&&!b.locked)rotateBlock(b,(b.rotation||0)+90);
+  if(a==='rotate-left'&&!b.locked)rotateBlock(b,(b.rotation||0)-90);
+  if(a==='rotation-reset'&&!b.locked)rotateBlock(b,0);
   if(a==='delete')return deleteSelection();
   if(a==='undo-delete')return undoDeletion();
   if(a==='duplicate') {
@@ -595,7 +597,7 @@ function contextToolbar() {
    const copies=roots.map(block=>duplicateBlock(page(),block.id));
    selectedIds=new Set(copies.map(c=>c.id));selected=copies.at(-1)?.id||null;
   }
-  if(a==='front'||a==='back'){const roots=blocks.filter(b=>!b.parentId),ids=new Set(roots.map(b=>b.id)),other=page().blocks.filter(b=>!ids.has(b.id));page().blocks=a==='front'?[...other,...roots]:[...roots,...other];}
+  if(['front','back','forward','backward'].includes(a))reorderBlocks(page(),blocks.map(b=>b.id),a);
   if(['row','column','remove-row','remove-column'].includes(a)) {
    b.cells??=[['할 일','상태','비고'],['자료 정리','진행 중',''],['아이디어 모으기','예정',''],['함께 검토하기','예정','']];
    try{if(a==='row')tableCells(b.cells.length+1,b.cells[0].length);if(a==='column')tableCells(b.cells.length,b.cells[0].length+1);}catch(error){toast(error.message);return;}
@@ -699,7 +701,7 @@ function onCanvasPointer(e) {
   } else if(resize) {
    const local=rotatedDelta(dx,dy,original.rotation||0);
    b.w=Math.max(b.type==='calendar'?220:b.type==='vline'?8:80,snap(original.w+local.x));b.h=Math.max(b.type==='calendar'?180:b.type==='hline'?8:36,snap(original.h+local.y));
-   if(b.keepAspect||e.shiftKey){const ratio=original.w/original.h;if(Math.abs(local.x/original.w)>=Math.abs(local.y/original.h))b.h=b.w/ratio;else b.w=b.h*ratio;}clampBlock(b,page());
+   if(e.shiftKey){const ratio=original.w/original.h;if(Math.abs(local.x/original.w)>=Math.abs(local.y/original.h))b.h=b.w/ratio;else b.w=b.h*ratio;}clampBlock(b,page());
   } else {
    const delta=groupDelta(snapshots,page(),dx,dy);
    moving.forEach((block,i)=>{block.x=snapshots[i].x+delta.x;block.y=snapshots[i].y+delta.y;});
@@ -1184,7 +1186,7 @@ function calendarEvent(block, date) {
 function help() {
   modal(
     "코션 사용 가이드",
-    `<div class="help-body"><div class="help-intro">업무를 가로로 넓게 펼쳐보세요.</div><p>상단 도구모음에서 메모, 표, 도형과 가로·세로 구분선을 추가합니다. 개체를 선택한 뒤 이동·크기 손잡이를 드래그하면 20px 격자에 맞춥니다. 회전 손잡이는 15도 간격이며 우클릭 메뉴에서 각도를 입력하거나 90도씩 회전할 수 있습니다.</p><p>개체를 우클릭하면 위치·크기·회전·잠금·앞뒤 순서·서랍 넣기·복제·삭제 메뉴가 열립니다. Shift+F10으로도 열고 Esc 또는 바깥 클릭으로 닫습니다. 표 버튼에서는 줄·칸 수와 표 크기, 제목 줄을 정합니다.</p><h3>Windows 단축키</h3><p>Ctrl+C/X/V 복사·잘라내기·붙여넣기, Ctrl+D 복제, Ctrl+Z 취소, Ctrl+Y 또는 Ctrl+Shift+Z 다시 실행, Ctrl+S 저장, Ctrl+N 새 페이지, Ctrl+O 파일 연결을 지원합니다. 텍스트에는 Ctrl+B/I/U 서식과 Ctrl+L/E/R 정렬을 적용합니다. 입력 중이 아닐 때 방향키는 1px, Shift+방향키는 10px 이동합니다.</p><h3>새 블록 삽입</h3><p>서랍을 추가하고 화살표를 눌러 펼치세요. 기존 개체를 담거나 파일·이미지·GIF·영상·메모를 목록으로 추가하고 순서를 바꾸거나 꺼낼 수 있습니다. 개체 테두리를 클릭하면 선택됩니다.</p><p>텍스트·메모·도형·표에서 커서를 놓고 취소선 옆 줄 체크박스를 누르면 그 줄에 체크를 붙입니다. 체크하면 자동 줄바꿈된 부분까지 해당 줄 전체에 취소선이 적용됩니다. Enter로 다음 체크 줄을 만들고 빈 체크 줄에서 Enter를 누르면 체크를 끝냅니다. 같은 서식 버튼으로 현재 줄의 체크를 제거합니다. 상단 도구모음에서 미디어·달력·링크를 추가하세요. 링크 창에서 인터넷 주소 또는 보드 페이지를 선택합니다. 개체 우클릭 → 링크 삽입 또는 Ctrl+K로 개체 자체에 링크를 걸고 클릭하면 이동합니다. F2로 내용을 편집하고 Esc로 편집을 끝냅니다. 새 도형은 정비율로 생성하며 비율 유지 또는 Shift로 비율을 유지해 크기를 바꿉니다. 달력 글자는 크기에 따라 조절되고 날짜는 왼쪽 위에 표시합니다. 서랍 위 휠은 서랍 목록을 스크롤합니다. 이미지와 GIF는 보드 안에 표시되고 영상은 재생 버튼으로 볼 수 있습니다. 미디어는 브라우저에 사본으로 저장하며 파일당 100MB까지 지원합니다. 달력 날짜를 누르면 일정 메모를 저장할 수 있습니다. 인터넷 링크는 새 탭으로, 페이지 링크는 해당 보드 페이지로 이동합니다.</p><h3>원본 파일을 바로가기로 연결</h3><p>Windows에서는 ZIP을 풀고 <strong>코션 실행.vbs</strong>를 실행하세요. 검은 창 없이 전용 HTML 창이 열리고 파일 카드 클릭 시 한글·Excel 등 PC 기본 프로그램으로 그 원본을 엽니다. 파일 내용을 내려받거나 사본으로 저장하지 않습니다.</p><p>전용 창에 파일을 끌어놓으면 원본 확인 창 없이 연결합니다. 파일 연결 창에서 파일을 선택하거나 ‘파일 선택이 열리지 않나요?’의 경로 붙여넣기를 사용할 수 있습니다. 폴더를 미리 지정할 필요가 없습니다. 일반 브라우저에서는 드래그한 파일의 전체 경로를 받을 수 없습니다. 원본을 이동하거나 삭제하면 다시 연결해 주세요.</p><p>코션.html만 직접 열면 브라우저 미리보기 모드이며 PC 기본 프로그램 실행은 지원하지 않습니다. 지원 브라우저에서는 원본 핸들을, 그 외에는 등록 시점의 사본을 보관한다고 표시합니다.</p><h3>미리보기</h3><p>마우스를 올리거나 카드의 눈 버튼을 누르세요. PDF는 실제 첫 페이지를 이미지로 표시합니다. HWP/HWPX는 저장된 미리보기를, Word·Excel·PowerPoint는 저장된 이미지 또는 설치된 Office를 사용합니다. 미리보기가 지원되지 않으면 이유를 표시하고 텍스트·표로 전환합니다.</p><h3>페이지와 저장</h3><p>페이지 크기는 고정하고 가로폭에 맞춰 표시합니다. 긴 보드는 세로로 스크롤합니다. 작은 페이지 이름은 위쪽 경로에서 수정하고 아래 숫자 버튼으로 페이지를 이동하세요.</p><p>작업은 현재 창의 저장 공간에 자동 저장됩니다. 기존 Chrome·Edge와 새 전용 창, HTML 직접 실행은 저장 공간이 다릅니다. 백업·복원으로 옮기고 주기적으로 보관하세요. 사이트 데이터를 지우면 작업이 사라집니다. 클라우드 동기화는 제공하지 않습니다.</p></div>`,
+    `<div class="help-body"><div class="help-intro">업무를 가로로 넓게 펼쳐보세요.</div><p>상단 도구모음에서 메모, 표, 도형과 가로·세로 구분선을 추가합니다. 개체를 선택한 뒤 이동·크기 손잡이를 드래그하면 20px 격자에 맞춥니다. 회전 손잡이는 15도 간격이며 우클릭 메뉴에서 각도를 입력하거나 90도씩 회전할 수 있습니다.</p><p>개체를 우클릭하면 위치·크기·회전·잠금·앞뒤 순서·서랍 넣기·복제·삭제 메뉴가 열립니다. Shift+F10으로도 열고 Esc 또는 바깥 클릭으로 닫습니다. 표 버튼에서는 줄·칸 수와 표 크기, 제목 줄을 정합니다.</p><h3>Windows 단축키</h3><p>Ctrl+C/X/V 복사·잘라내기·붙여넣기, Ctrl+D 복제, Ctrl+Z 취소, Ctrl+Y 또는 Ctrl+Shift+Z 다시 실행, Ctrl+S 저장, Ctrl+N 새 페이지, Ctrl+O 파일 연결을 지원합니다. 텍스트에는 Ctrl+B/I/U 서식과 Ctrl+L/E/R 정렬을 적용합니다. 입력 중이 아닐 때 방향키는 1px, Shift+방향키는 10px 이동합니다.</p><h3>새 블록 삽입</h3><p>서랍을 추가하고 화살표를 눌러 펼치세요. 기존 개체를 담거나 파일·이미지·GIF·영상·메모를 목록으로 추가하고 순서를 바꾸거나 꺼낼 수 있습니다. 개체 테두리를 클릭하면 선택됩니다.</p><p>텍스트·메모·도형·표에서 커서를 놓고 취소선 옆 줄 체크박스를 누르면 그 줄에 체크를 붙입니다. 체크하면 자동 줄바꿈된 부분까지 해당 줄 전체에 취소선이 적용됩니다. Enter로 다음 체크 줄을 만들고 빈 체크 줄에서 Enter를 누르면 체크를 끝냅니다. 같은 서식 버튼으로 현재 줄의 체크를 제거합니다. 상단 도구모음에서 미디어·달력·링크를 추가하세요. 링크 창에서 인터넷 주소 또는 보드 페이지를 선택합니다. 개체 우클릭 → 링크 삽입 또는 Ctrl+K로 개체 자체에 링크를 걸고 클릭하면 이동합니다. F2로 내용을 편집하고 Esc로 편집을 끝냅니다. 새 도형은 처음에만 정비율이며 이후 가로·세로를 자유롭게 조절합니다. Shift를 누른 채 드래그할 때만 현재 비율을 유지합니다. 달력 글자는 크기에 따라 조절되고 날짜는 왼쪽 위에 표시합니다. 서랍 위 휠은 서랍 목록을 스크롤합니다. 이미지와 GIF는 보드 안에 표시되고 영상은 재생 버튼으로 볼 수 있습니다. 미디어는 브라우저에 사본으로 저장하며 파일당 100MB까지 지원합니다. 달력 날짜를 누르면 일정 메모를 저장할 수 있습니다. 인터넷 링크는 새 탭으로, 페이지 링크는 해당 보드 페이지로 이동합니다.</p><h3>원본 파일을 바로가기로 연결</h3><p>Windows에서는 ZIP을 풀고 <strong>코션 실행.vbs</strong>를 실행하세요. 검은 창 없이 전용 HTML 창이 열리고 파일 카드 클릭 시 한글·Excel 등 PC 기본 프로그램으로 그 원본을 엽니다. 파일 내용을 내려받거나 사본으로 저장하지 않습니다.</p><p>전용 창에 파일을 끌어놓으면 원본 확인 창 없이 연결합니다. 파일 연결 창에서 파일을 선택하거나 ‘파일 선택이 열리지 않나요?’의 경로 붙여넣기를 사용할 수 있습니다. 폴더를 미리 지정할 필요가 없습니다. 일반 브라우저에서는 드래그한 파일의 전체 경로를 받을 수 없습니다. 원본을 이동하거나 삭제하면 다시 연결해 주세요.</p><p>코션.html만 직접 열면 브라우저 미리보기 모드이며 PC 기본 프로그램 실행은 지원하지 않습니다. 지원 브라우저에서는 원본 핸들을, 그 외에는 등록 시점의 사본을 보관한다고 표시합니다.</p><h3>미리보기</h3><p>마우스를 올리거나 카드의 눈 버튼을 누르세요. PDF는 실제 첫 페이지를 이미지로 표시합니다. HWP/HWPX는 저장된 미리보기를, Word·Excel·PowerPoint는 저장된 이미지 또는 설치된 Office를 사용합니다. 미리보기가 지원되지 않으면 이유를 표시하고 텍스트·표로 전환합니다.</p><h3>페이지와 저장</h3><p>페이지 크기는 고정하고 가로폭에 맞춰 표시합니다. 긴 보드는 세로로 스크롤합니다. 작은 페이지 이름은 위쪽 경로에서 수정하고 아래 숫자 버튼으로 페이지를 이동하세요.</p><p>작업은 현재 창의 저장 공간에 자동 저장됩니다. 기존 Chrome·Edge와 새 전용 창, HTML 직접 실행은 저장 공간이 다릅니다. 백업·복원으로 옮기고 주기적으로 보관하세요. 사이트 데이터를 지우면 작업이 사라집니다. 클라우드 동기화는 제공하지 않습니다.</p></div>`,
   );
 }
 async function fileLibrary() {

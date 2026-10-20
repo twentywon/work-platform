@@ -37,7 +37,7 @@ try {
   assert.equal((await request('preview-start',{id:original})).status,400);
   assert.equal((await request('paths',{paths:['relative.txt']})).status,400);
   const status=await(await request('status')).json();
-  assert.equal(status.version,'0.10.0');assert.equal(status.folderCount,0);
+  assert.equal(status.version,'0.10.1');assert.equal(status.folderCount,0);
   const direct=await(await request('paths',{paths:['"'+original+'"']})).json();
   assert.equal(direct.files[0].id,'approved-file');assert.equal(direct.files[0].path,original);
   await writeFile(original,'수정된 원본의 최신 내용');

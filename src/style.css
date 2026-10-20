@@ -1867,3 +1867,7 @@ main {
 .file-connect-options { display: flex; flex-direction: column; gap: 18px; }
 .file-connect-options details { border-top: 1px solid #d8deeb; padding-top: 16px; }
 .file-connect-options summary { cursor: pointer; color: #536685; }
+
+/* Selection outlines must not override the object's actual stacking order. */
+.block.selected, .block.contains-selected { z-index: auto; }
+.block.moving { z-index: 100; }

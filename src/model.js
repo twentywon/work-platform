@@ -34,7 +34,6 @@ export function makeBlock(type, x = 60, y = 210, extra = {}) {
         : type === "text"
           ? "내용을 입력하세요."
           : "",
-    ...(isShape(type)?{keepAspect:true}:{}),
     rotation: 0,
     color: type === "note" ? "#fff4ce" : "#e9edff",
     ...extra,
@@ -123,3 +122,22 @@ export function duplicateBlock(page,id) {
 
 // Rotation changes only the angle. The layout anchor, center and size remain fixed.
 export function rotateBlock(block,angle) {block.rotation=Number.isFinite(Number(angle))?Number(angle)%360:0;return block;}
+
+// Move selected siblings together without changing their relative order or drawer membership.
+export function reorderBlocks(page, ids, direction) {
+ const selected=new Set(ids),roots=page.blocks.filter(b=>selected.has(b.id)&&!selected.has(b.parentId));
+ for(const parent of new Set(roots.map(b=>b.parentId||null))) {
+  const indexes=page.blocks.flatMap((b,i)=>(b.parentId||null)===parent?[i]:[]);
+  let siblings=indexes.map(i=>page.blocks[i]);
+  const included=new Set(roots.filter(b=>(b.parentId||null)===parent).map(b=>b.id));
+  if(direction==='front'||direction==='back'){
+   const chosen=siblings.filter(b=>included.has(b.id)),rest=siblings.filter(b=>!included.has(b.id));
+   siblings=direction==='front'?[...rest,...chosen]:[...chosen,...rest];
+  }else if(direction==='forward'){
+   for(let i=siblings.length-2;i>=0;i--)if(included.has(siblings[i].id)&&!included.has(siblings[i+1].id))[siblings[i],siblings[i+1]]=[siblings[i+1],siblings[i]];
+  }else if(direction==='backward'){
+   for(let i=1;i<siblings.length;i++)if(included.has(siblings[i].id)&&!included.has(siblings[i-1].id))[siblings[i-1],siblings[i]]=[siblings[i],siblings[i-1]];
+  }
+  indexes.forEach((index,i)=>page.blocks[index]=siblings[i]);
+ }
+}
