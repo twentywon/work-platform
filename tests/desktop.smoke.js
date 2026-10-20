@@ -29,7 +29,7 @@ try {
       return "";
     };
   }, fixture);
-  await win.locator(".page-header [data-action=register]").click();
+  await win.locator(".toolbar [data-action=register]").click();
   const card = win
     .locator(".file-open")
     .filter({ hasText: "native-document.txt" });

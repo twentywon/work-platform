@@ -34,7 +34,7 @@ export async function getFile(record) {
   if (record.mode === "desktop") {
     if (!window.moaDesktop)
       throw new Error(
-        "원본 파일은 등록한 컴퓨터의 모아 데스크톱 앱에서 열어 주세요.",
+        "원본 파일은 등록한 컴퓨터의 ‘모아 실행.cmd’로 실행한 화면에서 열어 주세요.",
       );
     const data = await window.moaDesktop.readFile(record.desktopId);
     return new File([data.bytes], data.name, {

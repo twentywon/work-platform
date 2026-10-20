@@ -1,6 +1,7 @@
 import "./style.css";
+import "./local-bridge.js";
 import { createIcons, icons } from "lucide";
-import { uid, makePage, makeBlock, fitScale, clampBlock } from "./model.js";
+import { uid, makePage, makeBlock, fitScale, clampBlock, snap, rotatedDelta } from "./model.js";
 import { read, write, getFile } from "./storage.js";
 import { previewFile, extension } from "./preview.js";
 const $ = (s) => document.querySelector(s);
@@ -162,9 +163,8 @@ function render() {
 <nav class="page-nav">${state.pages.map((x, i) => `<button data-page="${x.id}" class="page-item ${x.id === active ? "current" : ""}">${icon("file")}<span>${escape(x.title)}</span>${x.id === active ? '<span class="current-dot"></span>' : ""}</button>`).join("")}</nav>
 <button class="new-page" data-action="add-page">${icon("plus")}새 페이지 만들기</button>
 <div class="side-bottom"><div class="tip-card"><span class="tip-icon">${icon("sparkles")}</span><strong>생각을 펼쳐보세요</strong><p>메모부터 파일까지,<br>모든 업무를 나만의 공간에.</p><button data-action="help">모아 사용 가이드 ${icon("arrow-up-right")}</button></div><div class="local-label">${icon("hard-drive")}이 브라우저에 안전하게 보관</div><button class="profile" data-action="help"><span class="profile-avatar">나</span><span>나의 공간<small>개인 워크스페이스</small></span>${icon("circle-help")}</button></div></aside>
-<main><header class="topbar"><div class="breadcrumb">워크스페이스 ${icon("chevron-right")}<span>${escape(p.title)}</span></div><div class="top-actions"><span id="save-status">${icon("cloud-check")}모든 변경사항 저장됨</span><button class="icon-btn" data-action="help" title="사용 가이드">${icon("circle-help")}</button></div></header>
-<section class="page-header"><div><div class="eyebrow"><span></span> MY WORKSPACE ${location.protocol === "file:" && !window.moaDesktop ? "· HTML EDITION" : ""}</div><div class="title-row"><input id="page-title" aria-label="페이지 이름" value="${escape(p.title)}" maxlength="70"/><button class="title-edit icon-btn" id="rename" title="페이지 이름 변경">${icon("pencil")}</button></div><p>일과 생각이 자연스럽게 연결되는 나만의 작업 공간</p></div><button class="primary-btn" data-action="register">${icon("plus")}파일 등록</button></section>
-<section class="toolbar" aria-label="삽입 도구모음"><div class="toolbar-group"><button data-add="text">${icon("type")}<span>텍스트</span></button><button data-add="note">${icon("sticky-note")}<span>메모</span></button><button data-add="table">${icon("table-2")}<span>표</span></button><div class="dropdown"><button data-menu="shapes">${icon("shapes")}<span>도형</span>${icon("chevron-down")}</button><div class="menu" id="shapes-menu"><button data-add="rect">${icon("square")}사각형</button><button data-add="circle">${icon("circle")}원</button></div></div><div class="dropdown"><button data-menu="lines">${icon("columns-2")}<span>구분선</span>${icon("chevron-down")}</button><div class="menu" id="lines-menu"><button data-add="hline">${icon("minus")}가로 구분선</button><button data-add="vline">${icon("move-vertical")}세로 구분선</button></div></div></div><span class="toolbar-divider"></span><button class="link-tool" data-action="register">${icon("link")}<span>파일 연결</span></button><div class="toolbar-right"><span>페이지 크기 고정</span>${icon("lock-keyhole")}<button class="dimensions" data-action="dimensions">${p.width} × ${p.height}</button></div></section>
+<main><header class="topbar"><div class="breadcrumb">워크스페이스 ${icon("chevron-right")}<input id="page-title" aria-label="페이지 이름" value="${escape(p.title)}" maxlength="70"/></div><div class="top-actions"><span id="save-status">${icon("cloud-check")}모든 변경사항 저장됨</span><button class="icon-btn" data-action="help" title="사용 가이드">${icon("circle-help")}</button></div></header>
+<section class="toolbar" aria-label="삽입 도구모음"><div class="toolbar-group"><button data-add="text">${icon("type")}<span>텍스트</span></button><button data-add="note">${icon("sticky-note")}<span>메모</span></button><button data-add="table">${icon("table-2")}<span>표</span></button><div class="dropdown"><button data-menu="shapes">${icon("shapes")}<span>도형</span>${icon("chevron-down")}</button><div class="menu" id="shapes-menu"><button data-add="rect">${icon("square")}사각형</button><button data-add="circle">${icon("circle")}원</button></div></div><div class="dropdown"><button data-menu="lines">${icon("columns-2")}<span>구분선</span>${icon("chevron-down")}</button><div class="menu" id="lines-menu"><button data-add="hline">${icon("minus")}가로 구분선</button><button data-add="vline">${icon("move-vertical")}세로 구분선</button></div></div></div><span class="toolbar-divider"></span><button class="link-tool" data-action="register">${icon("link")}<span>파일 연결</span></button><button class="link-tool" data-action="link-folder">${icon("folder-open")}<span>연결 폴더</span></button><div class="toolbar-right"><span>가로폭 맞춤 · 격자 20px</span>${icon("lock-keyhole")}<button class="dimensions" data-action="dimensions">${p.width} × ${p.height}</button></div></section>
 <div class="canvas-meta"><span>${icon("panel-top")} 자유롭게 배치하는 나의 보드</span><span>클릭해서 편집 · 드래그해서 이동</span></div>
 <div class="canvas-viewport" id="viewport"><div class="canvas-space" id="canvas-space"><div class="canvas" id="canvas" style="width:${p.width}px;height:${p.height}px">${p.blocks.map(blockHTML).join("")}<div class="canvas-footer"><span>MADE FOR YOUR IDEAS</span><span>MOA WORKSPACE · ${String(state.pages.indexOf(p) + 1).padStart(2, "0")}</span></div></div></div><div id="selection-tools"></div></div>
 <footer class="bottom-bar"><span class="page-count">${state.pages.indexOf(p) + 1} / ${state.pages.length} 페이지</span><div class="pagination"><button data-action="prev-page" title="이전 페이지" ${state.pages.indexOf(p) === 0 ? "disabled" : ""}>${icon("chevron-left")}</button>${state.pages.map((x, i) => `<button data-page="${x.id}" class="${x.id === active ? "chosen" : ""}" aria-label="${i + 1}페이지">${i + 1}</button>`).join("")}<button data-action="next-page" title="다음 페이지" ${state.pages.indexOf(p) === state.pages.length - 1 ? "disabled" : ""}>${icon("chevron-right")}</button><span></span><button data-action="add-page" title="새 페이지">${icon("plus")}</button></div><div class="zoom-tools"><button data-action="zoom-out" title="축소">${icon("minus")}</button><button id="zoom-value" data-action="fit" title="화면에 맞추기">100%</button><button data-action="zoom-in" title="확대">${icon("plus")}</button><span></span><button data-action="fullscreen" title="전체 화면">${icon("maximize")}</button></div></footer></main>
@@ -196,7 +196,7 @@ function blockHTML(b) {
     const [ico, bg, color] = fileStyle(b.name);
     content = `<button class="file-open" data-file="${b.fileId}" title="${escape(b.sourcePath || b.name)}"><span class="file-type" style="background:${bg};color:${color}">${icon(ico)}</span><span class="file-details"><strong>${escape(b.name)}</strong><small id="mode-${b.id}">${window.moaDesktop ? "바로가기 · 원본 파일 열기" : "마우스를 올려 미리보기"}</small></span>${icon("arrow-up-right")}</button>${window.moaDesktop ? `<button class="file-preview-action" data-preview-file="${b.fileId}" title="미리보기">${icon("eye")}</button>` : ""}`;
   }
-  return `<article class="block block-${b.type} ${b.role || ""}" data-id="${b.id}" style="left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;--block-color:${b.color}"><button class="drag-handle" title="드래그하여 이동" aria-label="블록 이동">${icon("grip")}</button>${content}<button class="resize-handle" title="크기 조절" aria-label="블록 크기 조절"></button></article>`;
+  return `<article class="block block-${b.type} ${b.role || ""}" data-id="${b.id}" style="left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;transform:rotate(${Number(b.rotation) || 0}deg);--block-color:${b.color}"><button class="drag-handle" title="드래그하여 이동" aria-label="블록 이동">${icon("grip")}</button>${content}<button class="rotate-handle" title="드래그하여 회전 (15도 간격)" aria-label="블록 회전">${icon("rotate-cw")}</button><button class="resize-handle" title="크기 조절" aria-label="블록 크기 조절"></button></article>`;
 }
 function bind() {
   document
@@ -230,7 +230,7 @@ function bind() {
       $("#page-title").value = page().title;
       persist();
     }
-    $(".breadcrumb span").textContent = page().title;
+
     const nav = document.querySelector(".page-item.current>span");
     if (nav) nav.textContent = page().title;
     document.title = page().title + " · 모아";
@@ -238,7 +238,6 @@ function bind() {
   $("#page-title").onkeydown = (e) => {
     if (e.key === "Enter") e.target.blur();
   };
-  $("#rename").onclick = () => $("#page-title").focus();
   $("#file-input").onchange = (e) => registerFiles([...e.target.files]);
   $("#canvas").addEventListener("pointerdown", onCanvasPointer);
   $("#canvas").addEventListener("input", (e) => {
@@ -302,7 +301,22 @@ function bind() {
   $("#viewport").ondrop = (e) => {
     e.preventDefault();
     $("#viewport").classList.remove("dragging");
-    registerFiles([...e.dataTransfer.files]);
+    const bounds = $("#canvas").getBoundingClientRect();
+    const dropped = [...e.dataTransfer.files];
+    const handles = window.moaDesktop ? [] : [...e.dataTransfer.items].map(i => i.getAsFileSystemHandle?.());
+    const position = {
+      x: snap((e.clientX - bounds.left) / zoom),
+      y: snap((e.clientY - bounds.top) / zoom),
+    };
+    if (window.moaDesktop) registerFiles(dropped, position);
+    else Promise.all(handles).then(async resolved => {
+      const records = [];
+      for (let i = 0; i < dropped.length; i++) {
+        const handle = resolved[i];
+        records.push(handle?.kind === "file" ? { file: dropped[i], handle } : dropped[i]);
+      }
+      return registerFiles(records, position);
+    }).catch(() => registerFiles(dropped, position));
   };
   $(".brand").onclick = (e) => {
     e.preventDefault();
@@ -319,7 +333,7 @@ function scaleCanvas() {
     manualZoom ??
     fitScale(
       p,
-      Math.max(300, v.clientWidth - 64),
+      Math.max(100, v.clientWidth - 24),
       Math.max(300, v.clientHeight - 50),
     );
   $("#canvas").style.transform = `scale(${zoom})`;
@@ -345,9 +359,13 @@ function addBlock(type) {
     makeBlock(type, 70 + (n % 5) * 30, 80 + (n % 7) * 40),
     p,
   );
+  b.x = snap(b.x); b.y = snap(b.y);
+  b.w = snap(b.w); b.h = snap(b.h);
+  clampBlock(b, p);
   p.blocks.push(b);
   selected = b.id;
   renderBlocks();
+  $("#viewport").scrollTop = Math.max(0, b.y * zoom - 65);
   persist();
   toast(
     `${{ text: "텍스트", note: "메모", table: "표", rect: "사각형", circle: "원", hline: "가로 구분선", vline: "세로 구분선" }[type]} 추가됨`,
@@ -370,8 +388,13 @@ function selectBlock(id) {
     box.innerHTML = "";
     return;
   }
-  box.innerHTML = `<div class="block-controls"><span>${{ text: "텍스트", note: "메모", table: "표", rect: "사각형", circle: "원", hline: "가로 구분선", vline: "세로 구분선", file: "파일" }[b.type]}</span>${["note", "rect", "circle"].includes(b.type) ? colors.map((c) => `<button class="swatch ${b.color === c ? "picked" : ""}" style="background:${c}" data-color="${c}" title="색상 ${c}"></button>`).join("") : ""}${b.type === "table" ? `<button data-block-action="row" title="행 추가">+ 행</button><button data-block-action="column" title="열 추가">+ 열</button><button data-block-action="remove-row" title="마지막 행 삭제">− 행</button><button data-block-action="remove-column" title="마지막 열 삭제">− 열</button>` : ""}<button data-block-action="duplicate" title="복제">${icon("copy")}</button><button data-block-action="delete" title="삭제" class="danger">${icon("trash-2")}</button></div>`;
+  box.innerHTML = `<div class="block-controls"><span>${{ text: "텍스트", note: "메모", table: "표", rect: "사각형", circle: "원", hline: "가로 구분선", vline: "세로 구분선", file: "파일" }[b.type]}</span>${["note", "rect", "circle"].includes(b.type) ? colors.map((c) => `<button class="swatch ${b.color === c ? "picked" : ""}" style="background:${c}" data-color="${c}" title="색상 ${c}"></button>`).join("") : ""}${b.type === "table" ? `<button data-block-action="row" title="행 추가">+ 행</button><button data-block-action="column" title="열 추가">+ 열</button><button data-block-action="remove-row" title="마지막 행 삭제">− 행</button><button data-block-action="remove-column" title="마지막 열 삭제">− 열</button>` : ""}<label class="rotation-label">회전 <input id="rotation-angle" aria-label="회전 각도" type="number" min="-360" max="360" step="15" value="${b.rotation || 0}"/>°</label><button data-block-action="rotate" title="90도 회전">${icon("rotate-cw")}</button><button data-block-action="duplicate" title="복제">${icon("copy")}</button><button data-block-action="delete" title="삭제" class="danger">${icon("trash-2")}</button></div>`;
   refreshIcons();
+  $("#rotation-angle").onchange = (e) => {
+    b.rotation = (Number(e.target.value) || 0) % 360;
+    clampBlock(b, page());
+    renderBlocks(); persist();
+  };
   box.querySelectorAll("[data-color]").forEach(
     (el) =>
       (el.onclick = () => {
@@ -384,13 +407,14 @@ function selectBlock(id) {
     (el) =>
       (el.onclick = () => {
         const a = el.dataset.blockAction;
+        if (a === "rotate") { b.rotation = ((b.rotation || 0) + 90) % 360; clampBlock(b, page()); }
         if (a === "delete") {
           page().blocks = page().blocks.filter((x) => x.id !== b.id);
           selected = null;
         }
         if (a === "duplicate") {
           const copy = clampBlock(
-            { ...structuredClone(b), id: uid(), x: b.x + 24, y: b.y + 24 },
+            { ...structuredClone(b), id: uid(), x: snap(b.x + 40), y: snap(b.y + 40) },
             page(),
           );
           page().blocks.push(copy);
@@ -424,8 +448,9 @@ function onCanvasPointer(e) {
   const b = page().blocks.find((x) => x.id === el.dataset.id);
   selectBlock(b.id);
   const resize = e.target.closest(".resize-handle"),
-    drag = e.target.closest(".drag-handle");
-  if (!resize && !drag) return;
+    drag = e.target.closest(".drag-handle"),
+    rotate = e.target.closest(".rotate-handle");
+  if (!resize && !drag && !rotate) return;
   e.preventDefault();
   const start = {
     x: e.clientX,
@@ -434,27 +459,37 @@ function onCanvasPointer(e) {
     by: b.y,
     w: b.w,
     h: b.h,
+    rotation: b.rotation || 0,
   };
+  const rect = el.getBoundingClientRect();
+  const center = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  const initialAngle = Math.atan2(e.clientY - center.y, e.clientX - center.x);
   el.setPointerCapture(e.pointerId);
   el.classList.add("moving");
   const move = (ev) => {
     const dx = (ev.clientX - start.x) / zoom,
       dy = (ev.clientY - start.y) / zoom;
-    if (resize) {
+    if (rotate) {
+      const angle = Math.atan2(ev.clientY - center.y, ev.clientX - center.x);
+      b.rotation = Math.round((start.rotation + (angle - initialAngle) * 180 / Math.PI) / 15) * 15;
+    } else if (resize) {
+      const local = rotatedDelta(dx, dy, start.rotation);
       b.w = Math.max(
         b.type === "vline" ? 8 : 80,
-        Math.min(start.w + dx, page().width - b.x),
+        snap(start.w + local.x),
       );
       b.h = Math.max(
         b.type === "hline" ? 8 : 36,
-        Math.min(start.h + dy, page().height - b.y),
+        snap(start.h + local.y),
       );
     } else {
-      b.x = start.bx + dx;
-      b.y = start.by + dy;
+      b.x = snap(start.bx + dx);
+      b.y = snap(start.by + dy);
       clampBlock(b, page());
     }
+    clampBlock(b, page());
     Object.assign(el.style, {
+      transform: `rotate(${b.rotation || 0}deg)`,
       left: b.x + "px",
       top: b.y + "px",
       width: b.w + "px",
@@ -466,6 +501,7 @@ function onCanvasPointer(e) {
     el.removeEventListener("pointermove", move);
     el.removeEventListener("pointerup", up);
     el.removeEventListener("pointercancel", up);
+    selectBlock(b.id);
     persist();
   };
   el.addEventListener("pointermove", move);
@@ -474,6 +510,16 @@ function onCanvasPointer(e) {
 }
 async function action(a) {
   if (a === "register") return pickFiles();
+  if (a === "link-folder") {
+    if (!window.moaDesktop?.chooseFolder) {
+      return toast("원본 바로가기는 ZIP을 풀고 ‘모아 실행.cmd’로 실행해 주세요.");
+    }
+    try {
+      const result = await window.moaDesktop.chooseFolder();
+      if (result.path) toast(`연결 폴더: ${result.path} · 이제 이 폴더의 파일을 끌어 놓으세요.`);
+    } catch (e) { toast(e.message); }
+    return;
+  }
   if (a === "add-page") {
     const p = makePage(
       state.pages.length + 1,
@@ -542,7 +588,7 @@ async function pickFiles() {
   }
   $("#file-input").click();
 }
-async function registerNativeRecords(records) {
+async function registerNativeRecords(records, position) {
   let count = 0;
   for (const native of records) {
     const record = {
@@ -557,8 +603,8 @@ async function registerNativeRecords(records) {
     const b = clampBlock(
       makeBlock(
         "file",
-        60 + (count % 3) * 310,
-        100 + Math.floor(count / 3) * 106,
+        (position?.x ?? 60) + (count % 3) * 320,
+        (position?.y ?? 100) + Math.floor(count / 3) * 100,
         { name: record.name, fileId: record.id, sourcePath: record.path },
       ),
       page(),
@@ -571,17 +617,15 @@ async function registerNativeRecords(records) {
   persist();
   if (count) toast(`${count}개 파일 바로가기 추가됨 · 원본 위치만 연결합니다.`);
 }
-async function registerFiles(items) {
+async function registerFiles(items, position) {
   if (!items.length) return;
   if (window.moaDesktop) {
     try {
       await registerNativeRecords(
-        await window.moaDesktop.registerDroppedFiles(items),
+        await window.moaDesktop.registerDroppedFiles(items), position,
       );
     } catch (e) {
-      toast(
-        "파일 바로가기를 추가하지 못했습니다. 파일 바로가기 추가 버튼으로 다시 선택해 주세요.",
-      );
+      toast(e.message || "파일 위치를 연결하지 못했습니다. 연결 폴더 또는 파일 연결 버튼을 사용해 주세요.");
     }
     return;
   }
@@ -601,8 +645,8 @@ async function registerFiles(items) {
       const b = clampBlock(
         makeBlock(
           "file",
-          60 + (count % 3) * 310,
-          100 + Math.floor(count / 3) * 106,
+          (position?.x ?? 60) + (count % 3) * 320,
+          (position?.y ?? 100) + Math.floor(count / 3) * 100,
           { name: file.name, fileId: id },
         ),
         page(),
@@ -676,7 +720,7 @@ async function showHover(target) {
     }
     const data = await previewFile(record);
     if (token !== previewToken) return;
-    el.innerHTML = `<div class="hover-title">${icon("eye")}${escape(record.name)}<span>미리보기</span></div>${previewHTML(data, true)}<div class="hover-foot">클릭하면 크게 볼 수 있어요</div>`;
+    el.innerHTML = `<div class="hover-title">${icon("eye")}${escape(record.name)}<span>미리보기</span></div>${previewHTML(data, true)}<div class="hover-foot">${record.mode === "desktop" ? "클릭하면 원본 프로그램으로 열립니다" : "클릭하면 크게 볼 수 있어요"}</div>`;
     refreshIcons();
   } catch (e) {
     if (token === previewToken) el.textContent = e.message;
@@ -730,6 +774,8 @@ async function openRegisteredFile(id) {
         "원본 파일을 열 수 없습니다. 파일 위치와 연결 프로그램을 확인해 주세요.",
       );
     }
+  } else if (record?.mode === "desktop") {
+    toast("이 바로가기는 ‘모아 실행.cmd’로 실행한 화면에서 열어 주세요.");
   } else openPreview(id);
 }
 async function openPreview(id) {
@@ -772,7 +818,7 @@ async function openPreview(id) {
 function help() {
   modal(
     "모아 사용 가이드",
-    `<div class="help-body"><div class="help-intro">작업의 모든 조각을, 한곳에.</div><p>상단 도구모음으로 텍스트, 메모, 표, 도형과 가로·세로 구분선을 추가하세요. 블록을 선택한 뒤 왼쪽 위 손잡이로 옮기고 오른쪽 아래 모서리로 크기를 바꿀 수 있습니다.</p><h3>내 컴퓨터 파일 연결</h3><p>데스크톱 앱에서는 파일 내용을 복사하지 않고 원본 위치만 바로가기로 연결합니다. 파일을 선택하거나 화면에 끌어 놓아 추가하세요.  파일 링크를 누르면 PC의 기본 연결 프로그램에서 원본 파일을 엽니다. 카드의 눈 모양 버튼으로 플랫폼 미리보기를 열 수 있습니다.</p><p>Chrome·Edge의 지원 환경에서는 원본 파일을 연결하고, 다시 열 때 최신 내용을 읽습니다. 브라우저가 권한을 다시 요청할 수 있습니다. 파일 이동·삭제 후에는 다시 등록하세요. 그 외 환경과 드래그 등록은 등록 시점의 사본을 브라우저에 보관합니다.</p><p>브라우저는 파일의 전체 경로를 제공하거나 연결 프로그램을 직접 실행하지 않습니다. 파일을 클릭하면 플랫폼 미리보기가 열리며, ‘파일 내려받기’ 후 컴퓨터의 프로그램에서 열 수 있습니다. 원본 경로로 직접 실행하려면 별도의 데스크톱 앱이 필요합니다.</p><h3>지원하는 미리보기</h3><div class="support-table"><div><strong>이미지 · PDF</strong><span>이미지 / 브라우저 PDF 뷰어</span></div><div><strong>Word (.docx)</strong><span>텍스트 미리보기</span></div><div><strong>Excel (.xlsx, .xls)</strong><span>시트별 데이터 (최대 60행·15열)</span></div><div><strong>PowerPoint (.pptx)</strong><span>슬라이드별 텍스트</span></div><div><strong>한글 (.hwpx)</strong><span>본문 텍스트</span></div><div><strong>.hwp · .doc · .ppt</strong><span>내려받아 연결 프로그램에서 열기</span></div></div><h3>고정된 페이지, 편안한 작업</h3><p>새 페이지는 현재 모니터의 가용 해상도로 크기가 고정됩니다. 화면이 바뀌어도 배치는 유지되며, 화면에 맞게 축소 표시됩니다. 도구모음의 크기 버튼으로 모니터에 다시 맞추거나 직접 지정하세요.</p><h3>자동 저장 안내</h3><p>페이지와 파일은 이 브라우저의 IndexedDB에 자동 저장됩니다. 클라우드 동기화는 제공되지 않습니다. 브라우저 데이터를 삭제하면 작업이 사라지므로 중요한 원본 파일은 별도로 보관하세요.</p></div>`,
+    `<div class="help-body"><div class="help-intro">업무를 가로로 넓게 펼쳐보세요.</div><p>상단 도구모음에서 메모, 표, 도형과 가로·세로 구분선을 추가합니다. 개체를 선택한 뒤 이동·크기 손잡이를 드래그하면 20px 격자에 맞춥니다. 회전 손잡이는 15도 간격이며 아래 도구모음에서 각도를 입력하거나 90도씩 회전할 수 있습니다.</p><h3>원본 파일을 바로가기로 연결</h3><p>Windows에서는 ZIP을 풀고 <strong>모아 실행.cmd</strong>를 실행하세요. 연결 도우미 창을 열어 두면 파일 카드 클릭 시 한글·Excel 등 PC 기본 프로그램으로 그 원본을 엽니다. 파일 내용을 내려받거나 사본으로 저장하지 않습니다.</p><p>파일 연결 버튼에서 원본을 선택하세요. 드래그하려면 먼저 연결 폴더를 지정하고 그 안의 파일을 끌어 놓으세요. 하위 폴더도 찾습니다. 같은 이름·크기·수정 시각을 가진 후보가 여러 개면 파일 연결 버튼으로 정확한 원본을 선택해야 합니다. 원본을 이동하거나 삭제하면 다시 연결해 주세요.</p><p>모아.html만 직접 열면 브라우저 미리보기 모드이며 PC 기본 프로그램 실행은 지원하지 않습니다. 지원 브라우저에서는 원본 핸들을, 그 외에는 등록 시점의 사본을 보관한다고 표시합니다.</p><h3>미리보기</h3><p>마우스를 올리거나 카드의 눈 버튼을 누르세요. 이미지, PDF, DOCX 본문, XLS/XLSX 셀, PPTX와 HWPX 텍스트를 표시합니다. HWP/DOC/PPT는 원본 프로그램에서 열어 주세요. 미리보기는 원본의 모든 서식을 재현하지 않습니다.</p><h3>페이지와 저장</h3><p>페이지 크기는 고정하고 가로폭에 맞춰 표시합니다. 긴 보드는 세로로 스크롤합니다. 작은 페이지 이름은 위쪽 경로에서 수정하고 아래 숫자 버튼으로 페이지를 이동하세요.</p><p>작업은 같은 브라우저에 자동 저장됩니다. HTML 직접 실행과 연결 도우미 화면은 저장 공간이 다릅니다. 사이트 데이터를 지우면 작업이 사라집니다. 클라우드 동기화는 제공하지 않습니다.</p></div>`,
   );
 }
 async function fileLibrary() {

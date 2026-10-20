@@ -27,17 +27,32 @@ export function makeBlock(type, x = 60, y = 210, extra = {}) {
         : type === "text"
           ? "내용을 입력하세요."
           : "",
+    rotation: 0,
     color: type === "note" ? "#fff4ce" : "#e9edff",
     ...extra,
   };
 }
 export function fitScale(page, width, height) {
-  return Math.min(width / page.width, height / page.height, 1);
+  return width / page.width;
 }
 export function clampBlock(block, page) {
   block.w = Math.min(block.w, page.width);
   block.h = Math.min(block.h, page.height);
-  block.x = Math.max(0, Math.min(block.x, page.width - block.w));
-  block.y = Math.max(0, Math.min(block.y, page.height - block.h));
+  const a = (block.rotation || 0) * Math.PI / 180;
+  const rotatedWidth = Math.abs(block.w * Math.cos(a)) + Math.abs(block.h * Math.sin(a));
+  const rotatedHeight = Math.abs(block.w * Math.sin(a)) + Math.abs(block.h * Math.cos(a));
+  const factor = Math.min(1, page.width / rotatedWidth, page.height / rotatedHeight);
+  block.w *= factor; block.h *= factor;
+  const mx = (rotatedWidth * factor - block.w) / 2;
+  const my = (rotatedHeight * factor - block.h) / 2;
+  block.x = Math.max(mx, Math.min(block.x, page.width - block.w - mx));
+  block.y = Math.max(my, Math.min(block.y, page.height - block.h - my));
   return block;
+}
+
+export const GRID = 20;
+export const snap = value => Math.round(value / GRID) * GRID;
+export function rotatedDelta(dx, dy, rotation) {
+  const angle = rotation * Math.PI / 180;
+  return { x: dx * Math.cos(angle) + dy * Math.sin(angle), y: -dx * Math.sin(angle) + dy * Math.cos(angle) };
 }

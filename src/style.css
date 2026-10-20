@@ -1649,3 +1649,16 @@ main {
   white-space: nowrap;
   max-width: 65%;
 }
+
+/* Wide board: fit width only, preserve the page's fixed coordinates. */
+.canvas-viewport { padding: 12px !important; }
+.canvas { background-image: radial-gradient(#cbd3e2 1px, transparent 1px); background-size: 20px 20px; }
+.canvas-meta { padding-top: 10px; padding-bottom: 10px; }
+.breadcrumb #page-title { width: 220px; max-width: 35vw; padding: 4px 8px; border: 1px solid transparent; border-radius: 5px; background: transparent; font: inherit; color: inherit; }
+.breadcrumb #page-title:focus { outline: 1px solid #818bd6; background: #fff; }
+.rotate-handle { display: none; position: absolute; right: -12px; top: -25px; width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 1px solid #8490db; color: #6574c5; cursor: grab; touch-action: none; z-index: 3; }
+.rotate-handle svg { width: 15px; height: 15px; }
+.selected .rotate-handle { display: grid; place-items: center; }
+.rotation-label { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 11px; }
+.rotation-label input { width: 55px; border: 1px solid #d8ddea; border-radius: 4px; padding: 4px; }
+.block-controls { flex-wrap: wrap; }

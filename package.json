@@ -1,6 +1,6 @@
 {
   "name": "work-platform",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,7 +16,8 @@
     "package:mac": "npm run build && electron-builder --mac dmg",
     "build:html": "vite build --config vite.html.config.js",
     "test:html": "npm run build:html && playwright test --config playwright.html.config.js",
-    "package:html": "npm run build:html && node scripts/package-html.mjs"
+    "package:html": "npm run build:html && node scripts/package-html.mjs",
+    "test:local": "npm run build:html && node tests/local-helper.integration.mjs"
   },
   "dependencies": {
     "jszip": "^3.10.1",

@@ -229,7 +229,7 @@ test("browser linked file reads latest source after changes", async ({
     await writer.close();
     window.showOpenFilePicker = async () => [handle];
   });
-  await page.locator(".page-header [data-action=register]").click();
+  await page.locator(".toolbar [data-action=register]").click();
   const card = page.locator(".file-open").filter({ hasText: "linked.txt" });
   await card.click();
   await expect(page.locator("#preview-body")).toContainText(
@@ -278,7 +278,7 @@ test("desktop bridge registers original paths, opens native files and previews s
       }),
     };
   });
-  await page.locator(".page-header [data-action=register]").click();
+  await page.locator(".toolbar [data-action=register]").click();
   await page.locator(".file-open").filter({ hasText: "desktop.txt" }).click();
   expect(await page.evaluate(() => window.nativeOpened)).toEqual([
     "native-123",
@@ -328,4 +328,46 @@ test("PDF file is passed intact to the document viewer", async ({ page }) => {
       source,
     ),
   ).toBe(true);
+});
+
+test('board fills the width, title panel is removed, rotation persists and movement snaps', async ({page}) => {
+  await expect(page.locator('.page-header')).toHaveCount(0);
+  const size = await page.locator('#canvas').evaluate(el => {
+    const v=document.querySelector('#viewport');
+    return {width:el.getBoundingClientRect().width,available:v.clientWidth-24};
+  });
+  expect(Math.abs(size.width-size.available)).toBeLessThan(2);
+  await page.setViewportSize({width:1440,height:640});
+  await expect.poll(()=>page.locator('#canvas').evaluate(el=>Math.abs(el.getBoundingClientRect().width-(document.querySelector('#viewport').clientWidth-24)))).toBeLessThan(2);
+  await page.locator('[data-menu=shapes]').click();
+  await page.locator('[data-add=rect]').click();
+  const block=page.locator('.block-rect').last();
+  const id=await block.getAttribute('data-id');
+  await page.locator('#rotation-angle').fill('30');
+  await page.locator('#rotation-angle').press('Tab');
+  await expect(block).toHaveCSS('transform',/matrix/);
+  await page.locator('[data-block-action=rotate]').click();
+  await expect(page.locator('#rotation-angle')).toHaveValue('120');
+  await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');
+  await page.reload();
+  const restored=page.locator(`[data-id="${id}"]`);
+  expect(await restored.getAttribute('style')).toContain('rotate(120deg)');
+  await restored.click();
+  await page.locator('#rotation-angle').fill('0');
+  await page.locator('#rotation-angle').press('Tab');
+  await restored.locator('.drag-handle').scrollIntoViewIfNeeded();
+  let handle=await restored.locator('.drag-handle').boundingBox();
+  await page.mouse.move(handle.x+10,handle.y+10);await page.mouse.down();
+  await page.mouse.move(handle.x+83,handle.y+57,{steps:5});await page.mouse.up();
+  const coords=await restored.evaluate(el=>[parseFloat(el.style.left),parseFloat(el.style.top)]);
+  expect(coords[0]%20).toBe(0);expect(coords[1]%20).toBe(0);
+  handle=await restored.locator('.rotate-handle').boundingBox();
+  const rect=await restored.boundingBox();
+  const center={x:rect.x+rect.width/2,y:rect.y+rect.height/2};
+  const start={x:handle.x+12,y:handle.y+12};
+  const dx=start.x-center.x,dy=start.y-center.y;
+  await page.mouse.move(start.x,start.y);await page.mouse.down();
+  await page.mouse.move(center.x+dx*Math.SQRT1_2-dy*Math.SQRT1_2,center.y+dx*Math.SQRT1_2+dy*Math.SQRT1_2,{steps:8});
+  await page.mouse.up();
+  await expect(page.locator('#rotation-angle')).toHaveValue('45');
 });
