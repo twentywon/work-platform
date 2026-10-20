@@ -371,3 +371,81 @@ test('board fills the width, title panel is removed, rotation persists and movem
   await page.mouse.up();
   await expect(page.locator('#rotation-angle')).toHaveValue('45');
 });
+
+async function insertExtra(page, action) {
+  await page.locator('[data-menu=extras]').click();
+  await page.locator(action).click();
+}
+test('checkboxes, web links and page links persist and navigate', async ({page}) => {
+  await expect(page.locator('.canvas-meta')).toHaveCount(0);
+  await page.locator('[data-add=checkbox]').click();
+  const task=page.locator('.block-checkbox');
+  await task.locator('.editable').fill('계약서 확인');
+  await task.getByRole('checkbox').check();
+  await expect(task.locator('.check-item')).toHaveClass(/done/);
+  await insertExtra(page,'[data-action=web]');
+  await page.locator('[name=url]').fill('javascript:alert(1)');
+  await page.locator('#link-form [type=submit]').click();
+  await expect(page.locator('#link-error')).toContainText('http');
+  await page.locator('[name=url]').fill('example.com/team');
+  await page.locator('[name=label]').fill('팀 홈페이지');
+  await page.locator('#link-form [type=submit]').click();
+  await expect(page.locator('.block-web a')).toHaveAttribute('href','https://example.com/team');
+  await expect(page.locator('.block-web a')).toHaveAttribute('rel','noopener noreferrer');
+  await page.locator('.pagination [data-action=add-page]').click();
+  await page.locator('#page-title').fill('프로젝트 자료');
+  await page.locator('#page-title').press('Tab');
+  await page.locator('.pagination [aria-label="1페이지"]').click();
+  await insertExtra(page,'[data-action=pagelink]');
+  await page.locator('[name=target]').selectOption({label:'프로젝트 자료'});
+  await page.locator('#link-form [type=submit]').click();
+  await expect(page.locator('.block-pagelink')).toContainText('프로젝트 자료');
+  await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');
+  await page.reload();
+  await expect(page.locator('.block-checkbox .editable')).toHaveText('계약서 확인');
+  await expect(page.locator('.block-checkbox input[type=checkbox]')).toBeChecked();
+  await expect(page.locator('.block-web a')).toContainText('팀 홈페이지');
+  await page.locator('[data-board-page]').click();
+  await expect(page.locator('#page-title')).toHaveValue('프로젝트 자료');
+});
+test('calendar month navigation and editable date notes survive reload', async ({page}) => {
+  await insertExtra(page,'[data-add=calendar]');
+  const calendar=page.locator('.block-calendar');
+  await calendar.locator('[data-calendar-month]').fill('2024-02');
+  await calendar.locator('[data-calendar-month]').press('Tab');
+  await expect(calendar.locator('[data-calendar-date]')).toHaveCount(29);
+  await calendar.locator('[data-calendar-date="2024-02-29"]').click();
+  await page.locator('[name=event]').fill('월말 보고서 제출');
+  await page.locator('#event-form [type=submit]').click();
+  await expect(calendar.locator('[data-calendar-date="2024-02-29"]')).toContainText('월말 보고서 제출');
+  await calendar.locator('[data-calendar-step="1"]').click();
+  await expect(calendar.locator('[data-calendar-month]')).toHaveValue('2024-03');
+  await calendar.locator('[data-calendar-step="-1"]').click();
+  await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');
+  await page.reload();
+  await page.locator('[data-calendar-date="2024-02-29"]').click();
+  await expect(page.locator('[name=event]')).toHaveValue('월말 보고서 제출');
+  await page.locator('#delete-event').click();
+  await expect(page.locator('[data-calendar-date="2024-02-29"]')).not.toHaveClass(/has-event/);
+});
+test('image, animated GIF and real video embed in the board and restore from storage', async ({page}) => {
+  const {readFile} = await import('node:fs/promises');
+  for(const media of [
+    {name:'photo.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jUQAAAABJRU5ErkJggg==','base64')},
+    {name:'motion.gif',mimeType:'image/gif',buffer:await readFile('tests/fixtures/motion.gif')},
+    {name:'clip.webm',mimeType:'video/webm',buffer:await readFile('tests/fixtures/clip.webm')},
+  ]) {
+    await page.locator('#media-input').setInputFiles(media);
+    await expect(page.locator('.media-caption').filter({hasText:media.name})).toBeVisible();
+  }
+  await expect.poll(()=>page.locator('.media-content img').evaluateAll(imgs=>imgs.every(i=>i.complete&&i.naturalWidth>0))).toBe(true);
+  const video=page.locator('.media-content video');
+  await expect.poll(()=>video.evaluate(v=>v.readyState)).toBeGreaterThanOrEqual(1);
+  await video.evaluate(v=>v.play());
+  await expect.poll(()=>video.evaluate(v=>v.currentTime)).toBeGreaterThan(0);
+  await expect(page.locator('#save-status')).toContainText('모든 변경사항 저장됨');
+  await page.reload();
+  await expect(page.locator('.block-media')).toHaveCount(3);
+  await expect.poll(()=>page.locator('.media-content img').evaluateAll(imgs=>imgs.length===2&&imgs.every(i=>i.complete&&i.naturalWidth>0))).toBe(true);
+  await expect.poll(()=>page.locator('.media-content video').evaluate(v=>v.readyState)).toBeGreaterThanOrEqual(1);
+});

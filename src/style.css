@@ -1662,3 +1662,41 @@ main {
 .rotation-label { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 11px; }
 .rotation-label input { width: 55px; border: 1px solid #d8ddea; border-radius: 4px; padding: 4px; }
 .block-controls { flex-wrap: wrap; }
+
+/* Inserted blocks share the board's move/resize/rotate controls. */
+.toolbar { flex-shrink: 0; margin-top: 10px; }
+.toolbar-right > span { display: none; }
+.check-item { display: flex; gap: 12px; align-items: flex-start; padding: 12px; height: 100%; background: #fff; border-radius: 6px; }
+.check-item input { width: 20px; height: 20px; flex-shrink: 0; margin-top: 3px; accent-color: #7884d7; cursor: pointer; }
+.check-item.done .editable { text-decoration: line-through; color: #a2a8b7; }
+.block-media { background: #fff; border-radius: 8px; }
+.media-content { width: 100%; height: calc(100% - 26px); display: flex; align-items: center; justify-content: center; overflow: hidden; color: #8791a7; font-size: 12px; }
+.media-content img, .media-content video { display: block; width: 100%; height: 100%; object-fit: contain; }
+.media-caption { height: 26px; padding: 5px 10px; font-size: 10px; color: #8791a7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-link { display: flex; align-items: center; gap: 12px; width: 100%; height: 100%; padding: 16px; border: 1px solid #dce1ee; border-radius: 8px; background: #fff; color: #596aaf; text-decoration: none; text-align: left; }
+.board-link > svg { flex-shrink: 0; width: 20px; }
+.board-link > span { min-width: 0; flex: 1; }
+.board-link strong, .board-link small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-link strong { font-size: 14px; }
+.board-link small { margin-top: 6px; font-size: 11px; color: #8c95aa; }
+.board-link:disabled { opacity: .6; }
+.insert-form { padding: 24px; display: grid; gap: 18px; }
+.insert-form label { display: grid; gap: 8px; color: #626f87; font-size: 13px; }
+.insert-form input, .insert-form select, .insert-form textarea { width: 100%; padding: 10px; border: 1px solid #d8deeb; border-radius: 6px; font: inherit; background: #fff; color: #46526b; }
+.insert-form textarea { resize: vertical; }
+#link-error { color: #b25252; font-size: 12px; margin: 0; }
+.event-actions { display: flex; justify-content: space-between; gap: 12px; }
+.block-calendar { padding: 12px; background: #fff; border: 1px solid #e2e6f0; border-radius: 8px; display: flex; flex-direction: column; }
+.calendar-head { display: flex; gap: 6px; align-items: center; flex-shrink: 0; height: 34px; }
+.calendar-head strong { margin-right: auto; font-size: 14px; }
+.calendar-head button { padding: 4px; color: #6877b0; font-size: 11px; }
+.calendar-head svg { width: 17px; height: 17px; }
+.calendar-week, .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); }
+.calendar-week { margin-top: 8px; color: #8d97ac; text-align: center; font-size: 11px; }
+.calendar-grid { flex: 1; min-height: 0; overflow: auto; margin-top: 7px; grid-auto-rows: minmax(35px,1fr); }
+.calendar-day { min-width: 0; padding: 5px; display: flex; flex-direction: column; gap: 3px; border-top: 1px solid #eef0f6; font-size: 11px; align-items: center; color: #5f6b84; }
+.calendar-day:hover { background: #f3f4fc; }
+.calendar-day.today > span { border-radius: 50%; background: #7c87d9; color: #fff; padding: 2px 4px; }
+.calendar-day small { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 9px; color: #7280bd; }
+@media(max-width: 1150px) { .toolbar { height: auto; min-height: 54px; flex-wrap: wrap; margin-left: 12px; margin-right: 12px; gap: 3px; } .toolbar-group { flex-wrap: wrap; } }
+.calendar-head input[type=month] { width: 145px; min-width: 0; border: 0; font: inherit; font-size: 13px; font-weight: 600; color: #5d6d92; margin-right: auto; background: transparent; }

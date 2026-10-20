@@ -12,6 +12,11 @@ export function makeBlock(type, x = 60, y = 210, extra = {}) {
     hline: [450, 16],
     vline: [16, 280],
     file: [290, 86],
+    checkbox: [300, 60],
+    media: [400, 280],
+    web: [320, 100],
+    pagelink: [300, 80],
+    calendar: [440, 420],
   };
   const [w, h] = sizes[type] || [290, 190];
   return {
@@ -22,7 +27,7 @@ export function makeBlock(type, x = 60, y = 210, extra = {}) {
     w,
     h,
     text:
-      type === "note"
+      type === "checkbox" ? "할 일을 입력하세요." : type === "note"
         ? "여기에 아이디어를 적어보세요."
         : type === "text"
           ? "내용을 입력하세요."

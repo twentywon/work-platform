@@ -119,7 +119,12 @@ if (primaryInstance)
             sandbox: true,
           },
         });
-        win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+        win.webContents.setWindowOpenHandler(({ url }) => {
+          try {
+            if (["https:", "http:"].includes(new URL(url).protocol)) shell.openExternal(url).catch(() => {});
+          } catch {}
+          return { action: "deny" };
+        });
         win.webContents.on("will-navigate", (event, url) => {
           if (url !== trustedURL) event.preventDefault();
         });

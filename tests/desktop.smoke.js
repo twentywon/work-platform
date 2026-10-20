@@ -24,6 +24,7 @@ try {
       canceled: false,
       filePaths: [filename],
     });
+    shell.openExternal = async (url) => { globalThis.testOpenedURL = url; };
     shell.openPath = async (filepath) => {
       globalThis.testOpenedFile = filepath;
       return "";
@@ -129,6 +130,13 @@ try {
   await expect
     .poll(() => app.evaluate(() => globalThis.testOpenedFile))
     .toBe(fixture);
+  await win.locator("#close-modal").click();
+  await win.locator('[data-menu=extras]').click();
+  await win.locator('[data-action=web]').click();
+  await win.locator('[name=url]').fill('https://example.com/team');
+  await win.locator('#link-form [type=submit]').click();
+  await win.locator('.block-web a').click();
+  await expect.poll(() => app.evaluate(() => globalThis.testOpenedURL)).toBe('https://example.com/team');
   console.log(
     "PASS: Electron startup, native file registration, native-open handoff, live source preview, reload persistence, unregistered-path denial.",
   );

@@ -96,6 +96,13 @@ try {
   await page.waitForTimeout(100);
   assert.equal(opened.id,'approved-file');
   assert.equal(await page.locator('.modal').count(),0);
+  await page.locator('#media-input').setInputFiles(path.resolve('tests/fixtures/clip.webm'));
+  const video = page.locator('.media-content video');
+  await video.waitFor();
+  await page.waitForFunction(() => document.querySelector('.media-content video')?.readyState >= 1);
+  await page.locator('[data-add=checkbox]').click();
+  await page.locator('.block-checkbox input').check();
+  assert.equal(await page.locator('.canvas-meta').count(), 0);
   await page.screenshot({path:path.join(root,'board.png')});
   assert.deepEqual(errors,[]);
   const stored=JSON.parse(await readFile(path.join(profile,'links.json'),'utf8'));
