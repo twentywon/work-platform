@@ -11,3 +11,5 @@
 - Preview provenance must be explicit: real PDF first-page rendering, embedded HWP/HWPX or Office thumbnails, Office read-only page export, or Windows thumbnail providers. On unsupported images, show the failure and fall back to text/data; never present file icons as first-page images. Do not claim Windows COM execution was validated on Linux.
 
 - v0.6 uses a hidden VBS launcher and WinForms WebView2 host. Close the owned helper with the app; never hide an unmanaged server with no lifecycle. Keep Microsoft SDK DLL license and provenance in the ZIP. Existing Chrome/Edge IndexedDB is separate: preserve backup/restore migration instructions. Never claim Windows WebView2 execution was tested on Linux.
+
+- v0.7 changes drawer deletion to cascade through contained board objects. Never delete the user’s original PC files. Keep in-session deletion undo, multi-selection/group geometry, drag-to-drawer identity, and persisted whole-object typography covered by tests. Context controls belong in one horizontal row below the insertion toolbar.

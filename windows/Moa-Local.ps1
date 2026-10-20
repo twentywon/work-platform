@@ -208,7 +208,7 @@ try {
             switch ($route) {
                 '/api/shutdown' { Send-Json $stream @{stopping=$true}; $script:running = $false }
                 '/api/status' {
-                    Send-Json $stream @{ version = '0.6.2'; folderCount = $script:roots.Count; folders = @($script:roots); apartment = [Threading.Thread]::CurrentThread.GetApartmentState().ToString() }
+                    Send-Json $stream @{ version = '0.7.0'; folderCount = $script:roots.Count; folders = @($script:roots); apartment = [Threading.Thread]::CurrentThread.GetApartmentState().ToString() }
                 }
                 '/api/select-start' { Send-Json $stream (Start-Worker 'select') }
                 '/api/preview-start' {

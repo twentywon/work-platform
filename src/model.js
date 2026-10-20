@@ -74,7 +74,8 @@ export function putInDrawer(page, ids, drawerId) {
     block.parentId=drawerId;
   }
   drawer.expanded=true;
-  drawer.h=Math.min(page.height-drawer.y,Math.max(260,drawer.openHeight||360));
+  drawer.h=Math.min(page.height,Math.max(260,drawer.openHeight||360));
+  clampBlock(drawer,page);
 }
 export function takeOutOfDrawer(page,id) {
   const block=page.blocks.find(b=>b.id===id);
@@ -87,10 +88,27 @@ export function takeOutOfDrawer(page,id) {
   block.y=beside?(drawer?.y||0):(drawer?.y||0)+(drawer?.h||0)+20;
   clampBlock(block,page);
 }
-export function deleteBlock(page,id) {
-  const block=page.blocks.find(b=>b.id===id);
-  if(block?.type==='drawer')for(const child of drawerChildren(page,id))takeOutOfDrawer(page,child.id);
-  page.blocks=page.blocks.filter(b=>b.id!==id);
+export function deleteBlocks(page,ids) {
+  const removed=new Set(ids);
+  let changed=true;
+  while(changed) {changed=false;for(const b of page.blocks)if(removed.has(b.parentId)&&!removed.has(b.id)){removed.add(b.id);changed=true;}}
+  const entries=page.blocks.flatMap((block,index)=>removed.has(block.id)?[{block:structuredClone(block),index}]:[]);
+  page.blocks=page.blocks.filter(b=>!removed.has(b.id));
+  return entries;
+}
+export function deleteBlock(page,id) { return deleteBlocks(page,[id]); }
+export function rotatedBounds(b) {
+ const angle=(b.rotation||0)*Math.PI/180;
+ const w=Math.abs(b.w*Math.cos(angle))+Math.abs(b.h*Math.sin(angle));
+ const h=Math.abs(b.w*Math.sin(angle))+Math.abs(b.h*Math.cos(angle));
+ return {left:b.x+(b.w-w)/2,top:b.y+(b.h-h)/2,right:b.x+(b.w+w)/2,bottom:b.y+(b.h+h)/2};
+}
+export function groupDelta(blocks,page,dx,dy) {
+ const bounds=blocks.map(rotatedBounds);
+ return {
+  x:Math.max(-Math.min(...bounds.map(r=>r.left)),Math.min(snap(dx),page.width-Math.max(...bounds.map(r=>r.right)))),
+  y:Math.max(-Math.min(...bounds.map(r=>r.top)),Math.min(snap(dy),page.height-Math.max(...bounds.map(r=>r.bottom)))),
+ };
 }
 export function duplicateBlock(page,id) {
   const block=page.blocks.find(b=>b.id===id);

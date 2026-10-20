@@ -1761,3 +1761,28 @@ main {
 .canvas { border-color: #cbd3e1; }
 .drawer-entry-tools, .drawer-add button, .media-caption, .note-label,
 .page-count, .connection-status { font-size: 11px; }
+
+/* One fixed settings row keeps the board still while selection changes. */
+.context-toolbar { height: 48px; min-height: 48px; display: flex; align-items: center; overflow-x: auto; overflow-y: hidden; white-space: nowrap; background: #fff; border-bottom: 1px solid #cbd3e1; padding: 0 14px; gap: 12px; scrollbar-width: thin; color: #40516d; }
+.context-toolbar .block-controls { position: static; bottom: auto; margin: 0; padding: 4px 0; height: 44px; max-width: none; width: max-content; border: 0; border-radius: 0; box-shadow: none; flex-shrink: 0; gap: 8px; }
+.context-toolbar strong { font-size: 11px; margin-right: 3px; }
+.context-toolbar label { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; flex-shrink: 0; }
+.context-toolbar input, .context-toolbar select { font: inherit; color: #35465f; height: 28px; border: 1px solid #c5cede; border-radius: 4px; background: #fff; padding: 3px 5px; }
+.context-toolbar input[type=number] { width: 58px; }
+.context-toolbar input[type=text], .context-toolbar input:not([type]) { width: 140px; }
+.context-toolbar input[type=color] { width: 28px; padding: 2px; }
+.context-toolbar input[type=checkbox] { width: 15px; height: 15px; accent-color: #5267c8; }
+.context-toolbar select { max-width: 155px; }
+.context-toolbar button { flex-shrink: 0; font-size: 11px; min-width: 26px; height: 28px; padding: 3px 6px; border: 1px solid transparent; border-radius: 4px; }
+.context-toolbar button[aria-pressed=true] { background: #e6ebff; border-color: #9daee4; color: #344ba9; }
+.context-toolbar .danger, .context-toolbar [data-block-action=delete] { color: #a23636; }
+.control-divider { width: 1px; height: 24px; background: #d6deeb; margin: 0 3px; flex-shrink: 0; }
+.selection-hint { font-size: 11px; color: #60708a; }
+.selection-marquee { position: absolute; pointer-events: none; z-index: 100; border: 1px solid #5267c8; background: #5267c822; }
+.block.position-locked > .drag-handle, .block.position-locked > .resize-handle, .block.position-locked > .rotate-handle { display: none; }
+.block.drawer-drop-target { outline: 3px solid #4261cd; outline-offset: 3px; background: #e7eeff; }
+.drawer-drop-target::after { content: '놓아서 서랍에 넣기'; position: absolute; left: 8px; top: -24px; background: #4261cd; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; pointer-events: none; z-index: 8; }
+.block-hline::before { height: var(--line-width,1px); background: var(--line-color,#c4ccdc); }
+.block-vline::before { width: var(--line-width,1px); background: var(--line-color,#c4ccdc); }
+.media-content img, .media-content video { object-fit: var(--media-fit,contain); }
+.canvas:focus { outline: none; }

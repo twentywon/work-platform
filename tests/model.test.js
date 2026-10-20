@@ -45,11 +45,25 @@ test("rotated objects remain entirely within the fixed board", () => {
   assert.ok(b.y + b.h / 2 + half < p.height + 0.001);
 });
 
-test('drawer movement preserves file identity; deleting a drawer releases its contents', async () => {
+test('drawer movement preserves file identity; deleting a drawer removes its contents', async () => {
   const {putInDrawer,deleteBlock,duplicateBlock,drawerChildren,takeOutOfDrawer}=await import('../src/model.js');
   const p=makePage(1);const d=makeBlock('drawer');const f=makeBlock('file',60,80,{fileId:'original-file'});p.blocks.push(d,f);
   putInDrawer(p,[f.id],d.id);assert.equal(f.parentId,d.id);assert.equal(f.fileId,'original-file');assert.equal(d.expanded,true);
   const copy=duplicateBlock(p,d.id);assert.equal(drawerChildren(p,copy.id).length,1);assert.equal(drawerChildren(p,copy.id)[0].fileId,'original-file');
   takeOutOfDrawer(p,f.id);assert.equal(f.parentId,undefined);
-  putInDrawer(p,[f.id],d.id);deleteBlock(p,d.id);assert.ok(p.blocks.includes(f));assert.equal(f.parentId,undefined);
+  putInDrawer(p,[f.id],d.id);deleteBlock(p,d.id);assert.ok(!p.blocks.includes(f));assert.equal(drawerChildren(p,copy.id).length,1);
+});
+
+test('group translation keeps relative placement and rotated bounds inside the board',async()=>{
+ const {groupDelta,rotatedBounds}=await import('../src/model.js');
+ const p=makePage(1,800,600),blocks=[makeBlock('note',100,100,{w:160,h:100,rotation:30}),makeBlock('file',400,250,{w:180,h:80})];
+ const delta=groupDelta(blocks,p,1000,1000);
+ const moved=blocks.map(b=>({...b,x:b.x+delta.x,y:b.y+delta.y}));
+ assert.equal(moved[1].x-moved[0].x,300);assert.equal(moved[1].y-moved[0].y,150);
+ for(const b of moved){const r=rotatedBounds(b);assert.ok(r.left>=0&&r.top>=0&&r.right<=800.001&&r.bottom<=600.001);}
+});
+test('cascade deletion is unique when both drawer and child are selected',async()=>{
+ const {deleteBlocks}=await import('../src/model.js');
+ const p=makePage(1);p.blocks=[makeBlock('drawer',0,0,{id:'d'}),makeBlock('file',0,0,{id:'f',parentId:'d',fileId:'original-id'}),makeBlock('note',500,100,{id:'other'})];
+ const entries=deleteBlocks(p,['d','f']);assert.deepEqual(p.blocks.map(b=>b.id),['other']);assert.equal(entries.length,2);assert.equal(entries[1].block.fileId,'original-id');
 });
