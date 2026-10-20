@@ -449,3 +449,27 @@ test('image, animated GIF and real video embed in the board and restore from sto
   await expect.poll(()=>page.locator('.media-content img').evaluateAll(imgs=>imgs.length===2&&imgs.every(i=>i.complete&&i.naturalWidth>0))).toBe(true);
   await expect.poll(()=>page.locator('.media-content video').evaluate(v=>v.readyState)).toBeGreaterThanOrEqual(1);
 });
+
+test('native selection shows waiting, cancellation and persistent connection errors', async ({page}) => {
+  await page.evaluate(()=>{
+    window.pickCount=0;
+    window.moaDesktop={
+      pickFiles:()=>{window.pickCount++;return new Promise(resolve=>window.finishPick=resolve)},
+      chooseFolder:async()=>{throw Error('도우미 연결 오류: 테스트')},
+    };
+  });
+  await page.locator('.toolbar [data-action=register]').click();
+  await expect(page.locator('#native-picker-wait')).toContainText('Windows 파일 선택 창');
+  await page.evaluate(()=>window.finishPick([]));
+  await expect(page.locator('.modal')).toHaveCount(0);
+  await expect(page.locator('#toast')).toContainText('선택을 취소');
+  await page.locator('[data-action=link-folder]').click();
+  await expect(page.locator('#connection-detail')).toContainText('도우미 연결 오류: 테스트');
+  await expect(page.locator('.modal')).toContainText('모아 실행.cmd');
+  expect(await page.evaluate(()=>window.pickCount)).toBe(1);
+});
+test('browser-only folder button explains how to activate original shortcuts', async ({page}) => {
+  await page.locator('[data-action=link-folder]').click();
+  await expect(page.locator('#connection-detail')).toContainText('미리보기 모드');
+  await expect(page.locator('.modal')).toContainText('http://127.0.0.1:17843');
+});

@@ -56,26 +56,43 @@ function Find-DroppedFile($Metadata) {
     }
     return $found.ToArray()
 }
-function Select-NativeFiles {
+function New-DialogOwner {
     Add-Type -AssemblyName System.Windows.Forms
+    $owner = New-Object System.Windows.Forms.Form
+    $owner.Text = '모아 파일 연결'
+    $owner.Size = New-Object System.Drawing.Size(1, 1)
+    $owner.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
+    $owner.ShowInTaskbar = $false
+    $owner.TopMost = $true
+    $owner.Opacity = 0
+    $owner.Show()
+    $owner.Activate()
+    $owner.BringToFront()
+    return $owner
+}
+function Select-NativeFiles {
+    $owner = New-DialogOwner
     $dialog = New-Object System.Windows.Forms.OpenFileDialog
     try {
-        $dialog.Title = '바로가기로 연결할 원본 파일 선택'
+        Write-Host '파일 선택 창을 표시합니다. 브라우저 앞의 Windows 창에서 선택해 주세요.'
+        $dialog.Title = '모아 - 바로가기로 연결할 원본 파일 선택'
         $dialog.Multiselect = $true
+        $dialog.RestoreDirectory = $true
         $dialog.Filter = '업무 문서 및 이미지|' + (($supported | ForEach-Object { '*' + $_ }) -join ';')
-        if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { return @($dialog.FileNames) }
+        if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) { return @($dialog.FileNames) }
         return @()
-    } finally { $dialog.Dispose() }
+    } finally { $dialog.Dispose(); $owner.Close(); $owner.Dispose() }
 }
 function Select-NativeFolder {
-    Add-Type -AssemblyName System.Windows.Forms
+    $owner = New-DialogOwner
     $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
     try {
-        $dialog.Description = '드래그할 파일이 있는 폴더를 선택하세요. 하위 폴더도 연결합니다.'
+        Write-Host '폴더 선택 창을 표시합니다. 브라우저 앞의 Windows 창에서 선택해 주세요.'
+        $dialog.Description = '모아 - 드래그할 파일이 있는 폴더를 선택하세요. 하위 폴더도 연결합니다.'
         $dialog.ShowNewFolderButton = $false
-        if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { return $dialog.SelectedPath }
+        if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) { return $dialog.SelectedPath }
         return ''
-    } finally { $dialog.Dispose() }
+    } finally { $dialog.Dispose(); $owner.Close(); $owner.Dispose() }
 }
 function Send-Response($Stream, [int]$Status, [byte[]]$Bytes, [string]$ContentType = 'application/json; charset=utf-8', [hashtable]$Extra = @{}) {
     $header = "HTTP/1.1 $Status Response`r`nContent-Type: $ContentType`r`nContent-Length: $($Bytes.Length)`r`nConnection: close`r`nCache-Control: no-store`r`nX-Content-Type-Options: nosniff`r`nX-Frame-Options: DENY`r`n"
@@ -107,8 +124,9 @@ try {
         if (-not $listener.Pending()) { Start-Sleep -Milliseconds 50; continue }
         $client = $listener.AcceptTcpClient()
         $stream = $client.GetStream()
-        $stream.ReadTimeout = 15000
+        $stream.ReadTimeout = 1000
         $stream.WriteTimeout = 15000
+        $route = ''
         try {
             $buffer = New-Object 'System.Collections.Generic.List[byte]'
             while ($true) {
@@ -147,6 +165,7 @@ try {
             }
             $length = 0
             if (-not [int]::TryParse($headers['content-length'], [ref]$length) -or $length -lt 0 -or $length -gt 1048576 -or $headers.ContainsKey('transfer-encoding')) { throw '잘못된 요청 크기입니다.' }
+            $stream.ReadTimeout = 15000
             $bodyBytes = New-Object byte[] $length
             $offset = 0
             while ($offset -lt $length) {
@@ -156,6 +175,9 @@ try {
             }
             $body = $utf8.GetString($bodyBytes) | ConvertFrom-Json
             switch ($route) {
+                '/api/status' {
+                    Send-Json $stream @{ version = '0.3.1'; folderCount = $script:roots.Count; apartment = [Threading.Thread]::CurrentThread.GetApartmentState().ToString() }
+                }
                 '/api/pick' {
                     $files = @(foreach ($path in @(Select-NativeFiles)) { Register-Document $path })
                     Save-Links
@@ -197,6 +219,7 @@ try {
                 default { Send-Json $stream @{ error = '지원하지 않는 요청입니다.' } 404 }
             }
         } catch {
+            if ($route -like '/api/*') { Write-Host ('연결 요청 오류: ' + $_.Exception.Message) }
             try { Send-Json $stream @{ error = $_.Exception.Message } 400 } catch {}
         } finally { $stream.Dispose(); $client.Close() }
     }

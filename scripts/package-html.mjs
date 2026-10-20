@@ -7,7 +7,7 @@ const html=await readFile(path.join(root,'모아.html'));
 zip.file('모아.html',html);
 zip.file('모아 실행.cmd',await readFile(path.join(root,'windows/Start-Moa.cmd')));
 zip.file('Moa-Local.ps1',await readFile(path.join(root,'windows/Moa-Local.ps1')));
-zip.file('사용방법.txt',`모아 v0.3 · Windows 10/11
+zip.file('사용방법.txt',`모아 v0.3.1 · Windows 10/11
 
 1. ZIP을 반드시 압축 해제하세요.
 2. 이전 모아 연결 도우미 창이 열려 있으면 먼저 닫고, 새 폴더의 모아 실행.cmd를 더블클릭하세요. 브라우저가 자동으로 열립니다. Node.js나 EXE 설치가 필요하지 않습니다.
@@ -19,6 +19,8 @@ zip.file('사용방법.txt',`모아 v0.3 · Windows 10/11
 8. 미디어는 이미지·GIF·영상 파일을 선택해 보드 안에 표시합니다. 이 미디어는 브라우저에 저장되는 사본(파일당 100MB 이하)입니다. 원본 바로가기와는 별개입니다. MP4(H.264) 또는 WebM 영상을 권장합니다.
 9. 달력에서 월을 선택하고 날짜를 눌러 일정을 기록합니다. 인터넷 링크는 http/https 주소를 새 탭에서 열며 페이지 링크는 보드의 다른 페이지로 이동합니다.
 10. 보드는 가로폭에 맞춰 표시하며 세로는 스크롤합니다. 위쪽 경로에서 작은 페이지 이름을 변경할 수 있습니다.
+
+선택 창이 나타나지 않으면 Alt+Tab으로 모아 창을 확인하세요. 상단 PC 연결 도우미 버튼에서 도우미 버전과 연결 상태를 확인할 수 있습니다. 오류가 발생하면 화면과 도우미 콘솔에 표시합니다.
 
 주의: 모아.html만 직접 열면 브라우저 미리보기 모드입니다. 원본을 PC 프로그램에서 열려면 모아 실행.cmd를 사용하세요. 회사 정책이 PowerShell 실행을 차단하면 연결 도우미를 사용할 수 없으며 IT 담당자 확인이 필요합니다.
 

@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {spawn} from 'node:child_process';
 import http from 'node:http';
+import net from 'node:net';
 import {once} from 'node:events';
 import {chromium} from '@playwright/test';
 const root = await mkdtemp(path.join(os.tmpdir(), 'moa-helper-'));
@@ -47,7 +48,16 @@ try {
   assert.equal(wrongHost,403);
   assert.equal((await request('open',{id:original})).status,400);
   assert.equal((await request('read',{id:'approved-file'})).status,200);
-  console.log('Access checks passed');
+  const status = await (await request('status')).json();
+  assert.equal(status.version, '0.3.1');
+  assert.equal(status.folderCount, 1);
+  const idle = net.connect(port,'127.0.0.1');
+  await once(idle,'connect');
+  const start = Date.now();
+  try { assert.equal((await request('status')).status,200); }
+  finally { idle.destroy(); }
+  assert.ok(Date.now()-start<5000,'idle browser connection must not block the helper for 15 seconds');
+  console.log('Access checks and idle connection recovery passed');
   const metadata={name:path.basename(original),size:Buffer.byteLength('원본 내용'),lastModified:timestamp};
   const result=await (await request('resolve',{files:[metadata]})).json();
   assert.equal(result.files[0].path,original);
@@ -104,6 +114,16 @@ try {
   await page.locator('.block-checkbox input').check();
   assert.equal(await page.locator('.canvas-meta').count(), 0);
   await page.screenshot({path:path.join(root,'board.png')});
+  await page.route('**/api/status',route=>route.abort());
+  await page.locator('[data-action=link-folder]').click();
+  await page.locator('#connection-detail').waitFor();
+  assert.match(await page.locator('#connection-detail').textContent(),/연결이 끊겼습니다/);
+  await page.locator('#close-modal').click();
+  await page.unroute('**/api/status');
+  await page.route('**/api/status',route=>route.fulfill({status:404,json:{error:'지원하지 않는 요청입니다.'}}));
+  await page.locator('.toolbar [data-action=register]').click();
+  await page.locator('#connection-detail').waitFor();
+  assert.match(await page.locator('#connection-detail').textContent(),/이전 버전/);
   assert.deepEqual(errors,[]);
   const stored=JSON.parse(await readFile(path.join(profile,'links.json'),'utf8'));
   assert.equal(stored.entries['approved-file'],original);
