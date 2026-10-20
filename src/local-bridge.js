@@ -11,7 +11,7 @@ if (window.moaLocal && !window.moaDesktop) {
         body: JSON.stringify(body || {}),
       });
       if (!response.ok) {
-        if (route === 'status' && response.status === 404) throw new Error('이전 버전 연결 도우미가 실행 중입니다. 기존 도우미 창을 닫고 최신 ZIP의 모아 실행.cmd를 실행한 뒤 새로고침해 주세요.');
+        if (['status', 'paths', 'folder-path'].includes(route) && response.status === 404) throw new Error('이전 버전 연결 도우미가 실행 중입니다. 기존 도우미 창을 닫고 최신 ZIP의 모아 실행.cmd를 실행한 뒤 새로고침해 주세요.');
         let message = '연결 도우미에 접근할 수 없습니다. 모아 실행.cmd를 다시 실행해 주세요.';
         try { message = (await response.json()).error || message; } catch {}
         throw new Error(message);
@@ -26,6 +26,8 @@ if (window.moaLocal && !window.moaDesktop) {
   const ready = async () => (await request('status', {}, 4000)).json();
   window.moaDesktop = {
     status: ready,
+    async registerPaths(paths) { return (await (await request('paths', { paths })).json()).files; },
+    async setFolder(path) { return (await request('folder-path', { path })).json(); },
     async pickFiles() {
       await ready();
       return (await (await request('pick', {}, 180000)).json()).files;

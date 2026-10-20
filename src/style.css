@@ -1705,3 +1705,6 @@ main {
 .connection-help ol { padding-left: 22px; }
 #connection-detail { padding: 12px; background: #f1f3fb; border-radius: 6px; overflow-wrap: anywhere; }
 @media(max-width: 700px) { .top-actions #save-status { display: none; } }
+#path-error { color: #b25252; font-size: 12px; margin: 0; overflow-wrap: anywhere; }
+#linked-folders { font-size: 11px; overflow-wrap: anywhere; }
+#path-form > p { font-size: 13px; color: #65718a; line-height: 1.7; margin: 0; }

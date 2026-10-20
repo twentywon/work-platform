@@ -176,7 +176,27 @@ try {
             $body = $utf8.GetString($bodyBytes) | ConvertFrom-Json
             switch ($route) {
                 '/api/status' {
-                    Send-Json $stream @{ version = '0.3.1'; folderCount = $script:roots.Count; apartment = [Threading.Thread]::CurrentThread.GetApartmentState().ToString() }
+                    Send-Json $stream @{ version = '0.4.0'; folderCount = $script:roots.Count; folders = @($script:roots); apartment = [Threading.Thread]::CurrentThread.GetApartmentState().ToString() }
+                }
+                '/api/paths' {
+                    $paths = @($body.paths)
+                    if ($paths.Count -eq 0 -or $paths.Count -gt 100) { throw '원본 파일 경로를 1개 이상, 100개 이하로 입력해 주세요.' }
+                    $validated = @(foreach ($path in $paths) {
+                        $candidate = ([string]$path).Trim().Trim([char]34)
+                        if (-not [IO.Path]::IsPathRooted($candidate)) { throw '탐색기에서 복사한 전체 파일 경로를 입력해 주세요.' }
+                        (Get-Document $candidate).FullName
+                    })
+                    $files = @(foreach ($path in $validated) { Register-Document $path })
+                    Save-Links
+                    Send-Json $stream @{ files = $files }
+                }
+                '/api/folder-path' {
+                    $candidate = ([string]$body.path).Trim().Trim([char]34)
+                    if (-not [IO.Path]::IsPathRooted($candidate)) { throw '폴더의 전체 경로를 입력해 주세요.' }
+                    $folder = Get-Item -LiteralPath $candidate -Force
+                    if (-not $folder.PSIsContainer) { throw '파일이 아니라 파일들이 들어 있는 폴더를 지정해 주세요.' }
+                    if ($script:roots -notcontains $folder.FullName) { $script:roots += $folder.FullName; Save-Links }
+                    Send-Json $stream @{ path = $folder.FullName }
                 }
                 '/api/pick' {
                     $files = @(foreach ($path in @(Select-NativeFiles)) { Register-Document $path })
